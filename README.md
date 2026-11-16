@@ -22,6 +22,8 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
 
 ตารางขาเต็ม: [docs/wiring/pin-table.md](docs/wiring/pin-table.md) · รูปวงจร: [node](docs/wiring/wiring-node.png), [gateway](docs/wiring/wiring-gateway.png)
 
+วงจรสำหรับเทสทีละตัว (บอร์ดเปล่า + เซนเซอร์ 1 ตัว, ไฟจาก USB): [t01](docs/wiring/tests/t01-blink.png) · [t02 DHT11](docs/wiring/tests/t02-dht11.png) · [t03 PIR](docs/wiring/tests/t03-pir.png) · [t04 เสียง](docs/wiring/tests/t04-sound.png) · [t05 servo + ปุ่ม](docs/wiring/tests/t05-servo.png) · [t06 HC-SR04](docs/wiring/tests/t06-ultrasonic.png) · [t07/t08 HX711](docs/wiring/tests/t07-t08-hx711.png)
+
 > ⚠️ ทั้งสองบอร์ดใช้ GPIO18 (node = HX711 SCK, gateway = เซอร์โว) ติดป้ายบอร์ดว่า NODE / GATEWAY ไว้ จะได้ไม่อัปโหลดผิดตัว
 
 ## โครงสร้าง repo
