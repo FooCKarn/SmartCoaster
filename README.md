@@ -54,6 +54,28 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
 - เลือกบอร์ด **DOIT ESP32 DEVKIT V1**
 - ไลบรารี: **DHT sensor library** (Adafruit), **HX711** (bogde), **ArduinoJson** v7
 
+#### ใช้ VS Code + PlatformIO แทน Arduino IDE
+
+1. ติดตั้งส่วนขยาย **PlatformIO IDE** ใน VS Code แล้วเปิดโฟลเดอร์รากของ repo นี้
+2. เปิด PlatformIO Home หรือใช้แถบ PlatformIO ให้ส่วนขยายติดตั้ง PlatformIO Core
+   และเครื่องมือ ESP32 ที่จำเป็น
+3. เลือก environment จาก `platformio.ini` แล้วกด **Build** หรือใช้คำสั่ง
+   `pio run -e <environment>`:
+   - `t03_pir` เป็นค่าเริ่มต้น (ทดสอบ PIR)
+   - `node`, `gateway` สำหรับ firmware หลัก
+   - `t01_blink`, `t02_dht11`, `t03_pir`, `t04_sound`, `t05_servo`,
+     `t06_ultrasonic`, `t07_hx711_cal`, `t08_hx711_weigh` สำหรับทดสอบอุปกรณ์
+4. ก่อน build หรือ upload `gateway` ให้คัดลอก
+   `gateway/secrets.example.h` เป็น `gateway/secrets.h` และใส่ค่าจริง
+   (ไฟล์นี้ถูก ignore ไม่ควร commit)
+5. เลือกพอร์ตอนุกรมของบอร์ด แล้วใช้ **Upload** หรือ
+   `pio run -e <environment> -t upload`; เปิด Serial Monitor ที่ **115200**
+   baud ด้วยปุ่ม Monitor หรือ `pio device monitor -b 115200`.
+
+PlatformIO ดาวน์โหลด framework และไลบรารีที่ระบุใน `platformio.ini` ให้อัตโนมัติ
+ระหว่าง build ครั้งแรก ส่วน `src/main.cpp` เป็นตัวเลือก sketch ให้ PlatformIO
+โดยโค้ดจริงยังอยู่ใน `node/`, `gateway/` และ `tests/` เหมือนเดิม
+
 ### 2. ทดสอบเซนเซอร์ทีละตัว
 เปิด sketch ใน `tests/` ตามลำดับ อัปโหลด แล้วเปิด Serial Monitor ที่ **115200** baud
 จด MAC ของ gateway จาก `t01_blink` และ CAL_FACTOR จาก `t07_hx711_cal` ลง [docs/calibration.md](docs/calibration.md)

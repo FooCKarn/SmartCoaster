@@ -1,0 +1,41 @@
+#include <Arduino.h>
+
+#if defined(SC_SKETCH_NODE)
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
+#include <HX711.h>
+#include "../node/node.ino"
+#elif defined(SC_SKETCH_GATEWAY)
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+#include "../gateway/gateway.ino"
+#elif defined(SC_SKETCH_T01_BLINK)
+#include <WiFi.h>
+#include <esp_wifi.h>
+#include "../tests/t01_blink/t01_blink.ino"
+#elif defined(SC_SKETCH_T02_DHT11)
+#include <DHT.h>
+#include "../tests/t02_dht11/t02_dht11.ino"
+#elif defined(SC_SKETCH_T03_PIR)
+#include "../tests/t03_pir/t03_pir.ino"
+#elif defined(SC_SKETCH_T04_SOUND)
+#include "../tests/t04_sound/t04_sound.ino"
+#elif defined(SC_SKETCH_T05_SERVO)
+#include "../tests/t05_servo/t05_servo.ino"
+#elif defined(SC_SKETCH_T06_ULTRASONIC)
+#include "../tests/t06_ultrasonic/t06_ultrasonic.ino"
+#elif defined(SC_SKETCH_T07_HX711_CAL)
+#include <HX711.h>
+#include "../tests/t07_hx711_cal/t07_hx711_cal.ino"
+#elif defined(SC_SKETCH_T08_HX711_WEIGH)
+#include <HX711.h>
+#include "../tests/t08_hx711_weigh/t08_hx711_weigh.ino"
+#else
+#error "Select a sketch using a PlatformIO environment in platformio.ini"
+#endif
