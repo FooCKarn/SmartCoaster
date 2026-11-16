@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Coaster</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; background: #f6f7f9; color: #222; }
+    h2 { margin: 0 0 4px; }
+    #status { font-size: .9em; color: #666; margin-bottom: 12px; }
+    #status.err { color: #c0392b; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .card { background: #fff; border-radius: 10px; padding: 12px 16px; box-shadow: 0 1px 2px #0001; }
+    .card small { color: #666; }
+    .card b { display: block; font-size: 1.6em; margin-top: 4px; }
+    .chart-box { background: #fff; border-radius: 10px; padding: 12px; margin-top: 16px; box-shadow: 0 1px 2px #0001; }
+  </style>
+</head>
+<body>
+  <h2>💧 Smart Coaster</h2>
+  <div id="status">กำลังเชื่อมต่อ Firebase…</div>
+
+  <div class="cards">
+    <div class="card"><small>น้ำหนักแก้ว</small><b id="w">–</b></div>
+    <div class="card"><small>ระยะ (ultrasonic)</small><b id="d">–</b></div>
+    <div class="card"><small>อุณหภูมิห้อง</small><b id="t">–</b></div>
+    <div class="card"><small>ความชื้น</small><b id="rh">–</b></div>
+    <div class="card"><small>เสียงห้อง (p2p)</small><b id="snd">–</b></div>
+    <div class="card"><small>PIR (นับการขยับ)</small><b id="mot">–</b></div>
+    <div class="card"><small>สัญญาณ node (RSSI)</small><b id="rssi">–</b></div>
+    <div class="card"><small>อัปเดตล่าสุด</small><b id="ts" style="font-size:1em">–</b></div>
+  </div>
+
+  <div class="chart-box"><canvas id="chartW" height="110"></canvas></div>
+  <div class="chart-box"><canvas id="chartRoom" height="90"></canvas></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, onValue, query, limitToLast }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const $ = id => document.getElementById(id);
+    const status = (msg, err = false) => { $("status").textContent = msg; $("status").className = err ? "err" : ""; };
+    const fmt = (v, digits, unit) => (typeof v === "number" && isFinite(v)) ? v.toFixed(digits) + unit : "–";
+    const time = ms => ms ? new Date(ms).toLocaleTimeString("th-TH") : "–";
+
+    // config.js ไม่อยู่ใน git: คัดลอกจาก config.example.js
+    let firebaseConfig;
+    try {
+      ({ firebaseConfig } = await import("./config.js"));
+    } catch (e) {
+      status("ไม่พบ config.js: คัดลอก dashboard/config.example.js เป็น config.js แล้วใส่ค่าของโปรเจกต์", true);
+      throw e;
+    }
+    const db = getDatabase(initializeApp(firebaseConfig));
+
+    // ---- การ์ดค่าล่าสุด ----
+    onValue(ref(db, "latest"), s => {
+      const v = s.val();
+      if (!v) { status("ยังไม่มีข้อมูลใน /latest (gateway ส่งมาหรือยัง?)"); return; }
+      $("w").textContent    = fmt(v.weight_g, 0, " g");
+      $("d").textContent    = v.dist_cm < 0 ? "no echo" : fmt(v.dist_cm, 0, " cm");
+      $("t").textContent    = fmt(v.room_t, 0, " °C");
+      $("rh").textContent   = fmt(v.room_rh, 0, " %");
+      $("snd").textContent  = fmt(v.sound_p2p, 0, "");
+      $("mot").textContent  = fmt(v.motion_count, 0, "");
+      $("rssi").textContent = fmt(v.rssi, 0, " dBm");
+      $("ts").textContent   = time(v.ts);
+      status(`node ${v.node_id} · seq ${v.seq}`);
+    }, err => status("อ่าน Firebase ไม่ได้: " + err.message, true));
+
+    // ---- กราฟย้อนหลัง 100 จุด ----
+    const opts = { animation: false, interaction: { mode: "index", intersect: false } };
+    const chartW = new Chart($("chartW"), {
+      type: "line",
+      data: { labels: [], datasets: [{ label: "น้ำหนักบนแท่น (g)", data: [], tension: 0.2 }] },
+      options: opts
+    });
+    const chartRoom = new Chart($("chartRoom"), {
+      type: "line",
+      data: { labels: [], datasets: [
+        { label: "อุณหภูมิ (°C)", data: [], tension: 0.2 },
+        { label: "ความชื้น (%)",  data: [], tension: 0.2 }
+      ] },
+      options: opts
+    });
+
+    onValue(query(ref(db, "readings"), limitToLast(100)), s => {
+      const rows = Object.values(s.val() || {});
+      const labels = rows.map(r => time(r.ts));
+      chartW.data.labels = labels;
+      chartW.data.datasets[0].data = rows.map(r => r.weight_g);
+      chartW.update();
+      chartRoom.data.labels = labels;
+      chartRoom.data.datasets[0].data = rows.map(r => r.room_t);
+      chartRoom.data.datasets[1].data = rows.map(r => r.room_rh);
+      chartRoom.update();
+    });
+  </script>
+</body>
+</html>

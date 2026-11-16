@@ -1,0 +1,9 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null && auth.uid === 'REPLACE_WITH_GATEWAY_UID'",
+    "readings": {
+      ".indexOn": ["ts"]
+    }
+  }
+}

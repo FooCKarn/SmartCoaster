@@ -1,0 +1,7 @@
+{
+  "database": { "rules": "firebase/database.rules.json" },
+  "hosting": {
+    "public": "dashboard",
+    "ignore": ["**/*.example.js"]
+  }
+}
