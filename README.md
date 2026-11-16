@@ -37,8 +37,9 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
 │   ├── t05_servo/          gateway (เซอร์โว + ปุ่มหยุด)
 │   ├── t06_ultrasonic/     node
 │   ├── t07_hx711_cal/      node: หา CAL_FACTOR
-│   └── t08_hx711_weigh/    node: ชั่งจริง
-├── common/msg.h        รูปแบบข้อความ ESP-NOW (ต้นฉบับ)
+│   ├── t08_hx711_weigh/    node: ชั่งจริง
+│   └── t10_line/           gateway: ทดสอบส่ง LINE push
+├── common/             รูปแบบข้อความ ESP-NOW และ LINE helper (ต้นฉบับ)
 ├── node/               firmware node (อ่านน้ำหนัก+ระยะ → ESP-NOW)
 ├── gateway/            firmware gateway (รับ ESP-NOW + เซนเซอร์ห้อง → Firebase)
 ├── dashboard/          หน้าเว็บ Chart.js อ่านจาก Firebase
@@ -64,10 +65,14 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
    - `t03_pir` เป็นค่าเริ่มต้น (ทดสอบ PIR)
    - `node`, `gateway` สำหรับ firmware หลัก
    - `t01_blink`, `t02_dht11`, `t03_pir`, `t04_sound`, `t05_servo`,
-     `t06_ultrasonic`, `t07_hx711_cal`, `t08_hx711_weigh` สำหรับทดสอบอุปกรณ์
+     `t06_ultrasonic`, `t07_hx711_cal`, `t08_hx711_weigh`, `t10_line`
+     สำหรับทดสอบอุปกรณ์
 4. ก่อน build หรือ upload `gateway` ให้คัดลอก
-   `gateway/secrets.example.h` เป็น `gateway/secrets.h` และใส่ค่าจริง
+   `gateway/secrets.example.h` เป็น `gateway/secrets.h` และใส่ค่า Wi-Fi,
+   Firebase และ LINE ที่ใช้งานจริง
    (ไฟล์นี้ถูก ignore ไม่ควร commit)
+   สำหรับทดสอบ LINE ให้คัดลอก `tests/t10_line/secrets.example.h` เป็น
+   `tests/t10_line/secrets.h` ใส่ค่า Wi-Fi, channel access token และ user ID
 5. เลือกพอร์ตอนุกรมของบอร์ด แล้วใช้ **Upload** หรือ
    `pio run -e <environment> -t upload`; เปิด Serial Monitor ที่ **115200**
    baud ด้วยปุ่ม Monitor หรือ `pio device monitor -b 115200`.
@@ -80,9 +85,15 @@ PlatformIO ดาวน์โหลด framework และไลบรารี�
 เปิด sketch ใน `tests/` ตามลำดับ อัปโหลด แล้วเปิด Serial Monitor ที่ **115200** baud
 จด MAC ของ gateway จาก `t01_blink` และ CAL_FACTOR จาก `t07_hx711_cal` ลง [docs/calibration.md](docs/calibration.md)
 
+ทดสอบการส่ง LINE จาก gateway: [docs/line_setup.md](docs/line_setup.md)
+
 ### 3. Gateway
-1. คัดลอก `gateway/secrets.example.h` เป็น `gateway/secrets.h` แล้วใส่ Wi-Fi (2.4 GHz) และ URL ของ Firebase RTDB
+1. คัดลอก `gateway/secrets.example.h` เป็น `gateway/secrets.h` แล้วใส่ Wi-Fi (2.4 GHz), URL ของ Firebase RTDB และ LINE credentials
 2. อัปโหลด `gateway/gateway.ino` จด `WiFi channel = X` ที่พิมพ์ออกมา
+
+ทดสอบ mock การแจ้งเตือน LINE ได้จาก Serial Monitor: พิมพ์ `m` เพื่อส่งข้อความจริง
+(ใช้โควตา LINE; สำเร็จแล้วจะพัก 30 นาที) หรือ `q` เพื่อดูจำนวนข้อความที่ใช้
+คำสั่งนี้เป็นเพียงตัวทดสอบ ยังไม่มีระบบตรวจจับการดื่มอัตโนมัติ
 
 ### 4. Node
 แก้ 3 ค่าบนสุดของ `node/node.ino`: `GATEWAY_MAC`, `WIFI_CHANNEL`, `CAL_FACTOR` แล้วอัปโหลด
@@ -106,8 +117,10 @@ gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินา�
 ```
 
 ## ความลับ
-ไฟล์ที่มีรหัสจริง (`gateway/secrets.h`, `dashboard/config.js`) อยู่ใน `.gitignore` แล้ว **ห้าม commit**
-commit เฉพาะไฟล์ `*.example` ที่เป็นค่าปลอม
+ไฟล์ที่มีรหัสจริง (`gateway/secrets.h`, `tests/t10_line/secrets.h`,
+`dashboard/config.js`) อยู่ใน `.gitignore` แล้ว **ห้าม commit**
+ไฟล์ `.firebaserc` เป็นค่าเลือก Firebase project เฉพาะเครื่องและถูก ignore ด้วย
+ให้ commit เฉพาะไฟล์ตัวอย่าง `*.example` ที่เป็นค่าปลอม
 
 ## ความปลอดภัย (หลัง checkpoint, E5)
 - เปลี่ยน rules จาก `firebase/database.rules.test-mode.json` เป็น `firebase/database.rules.json` (ใส่ UID บัญชี gateway)
@@ -117,7 +130,8 @@ commit เฉพาะไฟล์ `*.example` ที่เป็นค่าป
 ## สิ่งที่ยังต้องทำ (หลัง checkpoint 20 พ.ย.)
 - [ ] ตรวจจับการดื่ม (น้ำหนักลด > 20 g แล้วนิ่ง) เก็บที่ `/drinks`
 - [ ] AI แบบ closed loop บน gateway → ยกป้ายด้วยเซอร์โว
-- [ ] แจ้งเตือนผ่าน LINE Messaging API
+- [ ] แจ้งเตือนผ่าน LINE Messaging API จากระบบตรวจจับ/กฎเตือนอัตโนมัติ
+  (มีเฉพาะ mock trigger ด้วย Serial `m` ใน gateway)
 - [ ] FreeRTOS task + queue บน gateway (E1), deep sleep node (E3), ACK + คิวตอนเน็ตล่ม (E4)
 - [ ] ไฟแบตของ node: 18650 → TP4056 → LDO 3.3 V, วัดแบตที่ GPIO34
 

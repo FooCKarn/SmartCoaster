@@ -36,6 +36,8 @@
 #elif defined(SC_SKETCH_T08_HX711_WEIGH)
 #include <HX711.h>
 #include "../tests/t08_hx711_weigh/t08_hx711_weigh.ino"
+#elif defined(SC_SKETCH_T10_LINE)
+#include "../tests/t10_line/t10_line.ino"
 #else
 #error "Select a sketch using a PlatformIO environment in platformio.ini"
 #endif

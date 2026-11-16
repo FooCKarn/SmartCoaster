@@ -6,3 +6,5 @@
 #define WIFI_PASS   "your-hotspot-password"
 #define DB_URL      "https://<project-id>-default-rtdb.asia-southeast1.firebasedatabase.app"  // ไม่มี / ท้าย
 #define DB_AUTH     ""     // ว่างไว้ตอน test mode, ใส่ idToken ในขั้น 5.5 (E5)
+#define LINE_TOKEN  "paste-channel-access-token-long-lived"
+#define LINE_USER_ID "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
