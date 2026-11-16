@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Per-sensor test wiring diagrams (tests/t01–t08). Uses helpers from ../gen.py style.
+"""Per-sensor test wiring diagrams (tests/t01–t09). Uses helpers from ../gen.py style.
 
 Run: python3 gen_tests.py <out_dir>   -> writes t0X-*.svg
 """
@@ -234,9 +234,47 @@ def t07():
                   ["HX711 not ready - เช็คสาย = DT/SCK/VCC ผิด · น้ำหนักติดลบ = สลับ A+ กับ A− · ยึด load cell ให้ปลายหนึ่งลอย (ตามลูกศรบนตัว)"])
 
 
+# ---------------------------------------------------------------- t09
+def t09():
+    used = {"D22": 1, "D21": 1, "3V3": 1, "GNDR": 1}
+    s, pts, ry, bot = base("t09 · INA219 วัดกระแส/แรงดัน — บอร์ด Node",
+                           "tests/t09_ina219 · SDA = 21, SCL = 22 · I²C ที่อยู่ 0x40 · ใช้ตัวต้านทาน 100 Ω เป็นโหลดทดสอบ (ต่ออนุกรมผ่าน VIN+ / VIN−)", used, "NODE")
+    kx, kw = 1240, 200
+    ky1, ky2 = ry(1) - 70, ry(6)
+    s.module(kx, ky1, kw, ky2 - ky1, "INA219", ["วัดกระแส/แรงดัน"], fill="#f3eefb", stroke="#7b5ea7")
+    for pin, name, col, lab in (("D22", "SCL", C["s3"], "SCL → GPIO22"), ("D21", "SDA", C["s4"], "SDA → GPIO21")):
+        x, y = pts[pin]
+        s.mpin(kx, y, name, "left"); sig(s, (x, y), (kx, y), col, lab)
+    gpx, vpx = kx + 50, kx + 130
+    y3, yg = pts["3V3"][1], pts["GNDR"][1]
+    s.mpin(gpx, ky2, "GND", "bottom"); s.mpin(vpx, ky2, "VCC", "bottom")
+    s.line([(gpx, ky2), (gpx, yg), pts["GNDR"]], C["gnd"])
+    s.line([(vpx, ky2), (vpx, y3), pts["3V3"]], C["3v3"])
+    # VIN+ ← 3V3 (ต่อเข้าเส้น 3V3 เดียวกับ VCC) · VIN− → โหลด 100 Ω → GND
+    pp, nn = (kx + kw, ry(2)), (kx + kw, ry(3))
+    s.mpin(*pp, "VIN+", "right"); s.mpin(*nn, "VIN−", "right")
+    xp, xl = kx + kw + 170, kx + kw + 120
+    s.line([pp, (xp, pp[1]), (xp, y3), (vpx, y3)], C["3v3"]); s.dot(vpx, y3, C["3v3"])
+    s.wire_label((kx + kw + xp) / 2, pp[1], "3V3 → VIN+", C["3v3"])
+    s.line([nn, (xl, nn[1])], C["3v3"])
+    s.wire_label((kx + kw + xl) / 2, nn[1], "VIN− → R", C["3v3"])
+    s.resistor_v(xl, nn[1], nn[1] + 160, "100Ω", C["3v3"], "left")
+    s.text(xl - 15, nn[1] + 100, "โหลดทดสอบ", 12, "end", 400, "#555")
+    s.gnd(xl, nn[1] + 160)
+    return finish(s, bot,
+                  ["INA219 SDA → D21 (GPIO21)", "INA219 SCL → D22 (GPIO22)", "INA219 VCC → 3V3", "INA219 GND → GND",
+                   "3V3 → INA219 VIN+ (ต่อเข้าจุด 3V3 เดียวกับ VCC ได้)",
+                   "INA219 VIN− → ตัวต้านทาน 100Ω → GND (ต่ออนุกรม ให้กระแสไหลผ่านขา VIN+ → VIN−)"],
+                  ["INA219 test (0x40) แล้วตามด้วย  bus = 3.290 V  shunt = 3.29 mV  I = 32.9 mA  P = 108.2 mW  ทุก 1 วินาที",
+                   "ค่า I ต้องใกล้เคียง V ÷ R (≈33 mA) หรือเทียบกับมัลติมิเตอร์โหมด mA ที่ต่ออนุกรม · ถอดสาย VIN− ออก → I ≈ 0 mA"],
+                  ["INA219 not found = สาย SDA/SCL/VCC หลวมหรือสลับ · ที่อยู่ต้องเป็น 0x40 (A0/A1 ไม่ต่อ) · ต้องติดตั้งไลบรารี Adafruit INA219",
+                   "ห้ามต่อ VIN+ กับ VIN− ตรงกันเฉย ๆ หรือคร่อมขนานกับโหลด: shunt ต้องอยู่อนุกรมกับสายบวกของโหลด · ถ้ากระแสเกิน 400 mA เปลี่ยนเป็น setCalibration_32V_1A()",
+                   "ตอนวัดโหนดจริง (E3): VIN+ ← TP4056 OUT+, VIN− → VBAT (ดู pin-table.md ข้อ 1) · GND ของ INA219 ต้องร่วมกับ ESP32"])
+
+
 if __name__ == "__main__":
     out = sys.argv[1]
     for name, fn in [("t01-blink", t01), ("t02-dht11", t02), ("t03-pir", t03), ("t04-sound", t04),
-                     ("t05-servo", t05), ("t06-ultrasonic", t06), ("t07-t08-hx711", t07)]:
+                     ("t05-servo", t05), ("t06-ultrasonic", t06), ("t07-t08-hx711", t07), ("t09-ina219", t09)]:
         fn().save(f"{out}/{name}.svg")
     print("ok")
