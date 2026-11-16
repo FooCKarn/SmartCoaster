@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1295" viewBox="0 0 1700 1295" font-family="'Noto Sans Thai','Sarabun','Leelawadee UI','Tahoma',sans-serif"><rect width="100%" height="100%" fill="#ffffff"/><text x="40" y="46" font-size="26" text-anchor="start" font-weight="700" fill="#1b2a41">t07 / t08 · Load cell + HX711 — บอร์ด Node</text>
+<text x="40" y="72" font-size="14" text-anchor="start" font-weight="400" fill="#555">tests/t07_hx711_cal (หา CAL_FACTOR) และ tests/t08_hx711_weigh (ชั่งจริง) ใช้วงจรเดียวกัน · DT = 19, SCK = 18</text>
+<rect x="760" y="120" width="300" height="804" rx="10" fill="#20303f" stroke="#0d1620" stroke-width="2"/>
+<rect x="820" y="130" width="180" height="30" rx="3" fill="#38506a" stroke="#5a7896" stroke-width="1"/>
+<text x="910.0" y="151" font-size="11" text-anchor="middle" font-weight="600" fill="#c9d6e3">ANTENNA (ด้านบน)</text>
+<text x="910.0" y="184" font-size="16" text-anchor="middle" font-weight="700" fill="#ffffff">NODE</text>
+<text x="910.0" y="204" font-size="12" text-anchor="middle" font-weight="400" fill="#c9d6e3">ESP32 DevKit V1 (DOIT 30 ขา)</text>
+<rect x="876.0" y="898" width="68" height="26" rx="3" fill="#9aa5b1" stroke="#555" stroke-width="1"/>
+<text x="910.0" y="916" font-size="12" text-anchor="middle" font-weight="700" fill="#222">USB</text>
+<polyline points="738,220 760,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="225" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">EN</text>
+<polyline points="738,266 760,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="271" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VP (GPIO36)</text>
+<polyline points="738,312 760,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="317" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VN (GPIO39)</text>
+<polyline points="738,358 760,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="363" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D34  ·  GPIO34</text>
+<polyline points="738,404 760,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="409" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D35  ·  GPIO35</text>
+<polyline points="738,450 760,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="455" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D32  ·  GPIO32</text>
+<polyline points="738,496 760,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="501" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D33  ·  GPIO33</text>
+<polyline points="738,542 760,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="547" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D25  ·  GPIO25</text>
+<polyline points="738,588 760,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="593" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D26  ·  GPIO26</text>
+<polyline points="738,634 760,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="639" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D27  ·  GPIO27</text>
+<polyline points="738,680 760,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="685" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D14  ·  GPIO14</text>
+<polyline points="738,726 760,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="731" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D12  ·  GPIO12</text>
+<polyline points="738,772 760,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="777" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D13  ·  GPIO13</text>
+<polyline points="738,818 760,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="823" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">GND</text>
+<polyline points="738,864 760,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="869" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VIN</text>
+<polyline points="1060,220 1082,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="225" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D23  ·  GPIO23</text>
+<polyline points="1060,266 1082,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="271" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D22  ·  GPIO22</text>
+<polyline points="1060,312 1082,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="317" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX0 (GPIO1)</text>
+<polyline points="1060,358 1082,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="363" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX0 (GPIO3)</text>
+<polyline points="1060,404 1082,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="409" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D21  ·  GPIO21</text>
+<polyline points="1060,450 1082,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="455" font-size="13" text-anchor="end" font-weight="700" fill="#ffd166">D19  ·  GPIO19</text>
+<polyline points="1060,496 1082,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="501" font-size="13" text-anchor="end" font-weight="700" fill="#ffd166">D18  ·  GPIO18</text>
+<polyline points="1060,542 1082,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="547" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D5  ·  GPIO5</text>
+<polyline points="1060,588 1082,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="593" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX2 (GPIO17)</text>
+<polyline points="1060,634 1082,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="639" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX2 (GPIO16)</text>
+<polyline points="1060,680 1082,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="685" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D4  ·  GPIO4</text>
+<polyline points="1060,726 1082,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="731" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D2  ·  GPIO2</text>
+<polyline points="1060,772 1082,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="777" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D15  ·  GPIO15</text>
+<polyline points="1060,818 1082,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="823" font-size="13" text-anchor="end" font-weight="700" fill="#ffd166">GND</text>
+<polyline points="1060,864 1082,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="869" font-size="13" text-anchor="end" font-weight="700" fill="#ffd166">3V3</text>
+<text x="910.0" y="946" font-size="13" text-anchor="middle" font-weight="700" fill="#1b2a41">เสียบ USB เข้าคอมพิวเตอร์ (จ่ายไฟ + Serial 115200)</text>
+<rect x="1240" y="422.4" width="200" height="138.0000000000001" rx="8" fill="#eefbf1" stroke="#3c8d4f" stroke-width="2"/>
+<text x="1340.0" y="444.4" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">HX711</text>
+<rect x="1235" y="445" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1250" y="455" font-size="13" text-anchor="start" font-weight="600" fill="#333">DT</text>
+<polyline points="1082,450 1240,450" fill="none" stroke="#e377c2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1108.9" y="425" width="104.19999999999999" height="19" rx="4" fill="#ffffff" stroke="#e377c2" stroke-width="1.2"/>
+<text x="1161.0" y="439" font-size="12" text-anchor="middle" font-weight="700" fill="#e377c2">DT → GPIO19</text>
+<rect x="1235" y="491" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1250" y="501" font-size="13" text-anchor="start" font-weight="600" fill="#333">SCK</text>
+<polyline points="1082,496 1240,496" fill="none" stroke="#0b6e4f" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1104.8" y="471" width="112.39999999999999" height="19" rx="4" fill="#ffffff" stroke="#0b6e4f" stroke-width="1.2"/>
+<text x="1161.0" y="485" font-size="12" text-anchor="middle" font-weight="700" fill="#0b6e4f">SCK → GPIO18</text>
+<rect x="1285" y="555.4000000000001" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1290" y="548.4000000000001" font-size="13" text-anchor="middle" font-weight="600" fill="#333">GND</text>
+<rect x="1365" y="555.4000000000001" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1370" y="548.4000000000001" font-size="13" text-anchor="middle" font-weight="600" fill="#333">VCC</text>
+<polyline points="1290,560.4000000000001 1290,818 1082,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1370,560.4000000000001 1370,864 1082,864" fill="none" stroke="#f28e00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1530" y="412.4" width="140" height="158.0000000000001" rx="8" fill="#f5f5f5" stroke="#666" stroke-width="2"/>
+<text x="1600.0" y="434.4" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">Load cell</text>
+<text x="1600.0" y="452.4" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">1 kg</text>
+<rect x="1435" y="457.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1430" y="467.4" font-size="13" text-anchor="end" font-weight="600" fill="#333">E+</text>
+<polyline points="1440,462.4 1530,462.4" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1525" y="457.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1540" y="467.4" font-size="12" text-anchor="start" font-weight="700" fill="#d62728">แดง</text>
+<rect x="1435" y="487.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1430" y="497.4" font-size="13" text-anchor="end" font-weight="600" fill="#333">E−</text>
+<polyline points="1440,492.4 1530,492.4" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1525" y="487.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1540" y="497.4" font-size="12" text-anchor="start" font-weight="700" fill="#222222">ดำ</text>
+<rect x="1435" y="517.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1430" y="527.4" font-size="13" text-anchor="end" font-weight="600" fill="#333">A−</text>
+<polyline points="1440,522.4 1530,522.4" fill="none" stroke="#9a9a9a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1525" y="517.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1540" y="527.4" font-size="12" text-anchor="start" font-weight="700" fill="#666">ขาว</text>
+<rect x="1435" y="547.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1430" y="557.4" font-size="13" text-anchor="end" font-weight="600" fill="#333">A+</text>
+<polyline points="1440,552.4 1530,552.4" fill="none" stroke="#2ca02c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1525" y="547.4" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1540" y="557.4" font-size="12" text-anchor="start" font-weight="700" fill="#2ca02c">เขียว</text>
+<rect x="40" y="994" width="1620" height="271" rx="8" fill="#fff8e6" stroke="#d9a400" stroke-width="1.5"/>
+<text x="56" y="1020" font-size="15" text-anchor="start" font-weight="700" fill="#5c4400">เช็กลิสต์ทดสอบ</text>
+<text x="56" y="1044" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ต่อสาย</text>
+<text x="56" y="1065" font-size="13" text-anchor="start" font-weight="400" fill="#333">   1) HX711 DT → D19 (GPIO19)</text>
+<text x="56" y="1086" font-size="13" text-anchor="start" font-weight="400" fill="#333">   2) HX711 SCK → D18 (GPIO18)</text>
+<text x="56" y="1107" font-size="13" text-anchor="start" font-weight="400" fill="#333">   3) HX711 VCC → 3V3 (ถ้ามีขา VDD แยก ต่อ 3V3 ด้วย)</text>
+<text x="56" y="1128" font-size="13" text-anchor="start" font-weight="400" fill="#333">   4) HX711 GND → GND</text>
+<text x="56" y="1149" font-size="13" text-anchor="start" font-weight="400" fill="#333">   5) Load cell แดง/ดำ/ขาว/เขียว → E+ / E− / A− / A+ ของ HX711</text>
+<text x="56" y="1170" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ผลที่ควรเห็นใน Serial Monitor (115200)</text>
+<text x="56" y="1191" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • t07: ยกของออก → รอ tare → วางของรู้น้ำหนัก พิมพ์กรัมแล้ว Enter → raw = ...  -&gt;  CAL_FACTOR = ...  (ทำ 3 รอบ เฉลี่ย จดลง docs/calibration.md)</text>
+<text x="56" y="1212" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • t08: ใส่ CAL_FACTOR ในโค้ด → weight =   250.0 g · ส่ง &#x27;t&#x27; เพื่อ tare ใหม่</text>
+<text x="56" y="1233" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ข้อควรระวัง</text>
+<text x="56" y="1254" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • HX711 not ready - เช็คสาย = DT/SCK/VCC ผิด · น้ำหนักติดลบ = สลับ A+ กับ A− · ยึด load cell ให้ปลายหนึ่งลอย (ตามลูกศรบนตัว)</text></svg>
