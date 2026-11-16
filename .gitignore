@@ -1,0 +1,11 @@
+# ห้าม commit รหัส Wi-Fi / token (ใช้ไฟล์ *.example แทน)
+secrets.h
+**/secrets.h
+dashboard/config.js
+
+# build / editor
+build/
+.pio/
+.vscode/
+.DS_Store
+.firebase/
