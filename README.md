@@ -99,6 +99,11 @@ PlatformIO ดาวน์โหลด framework และไลบรารี�
 แก้ 3 ค่าบนสุดของ `node/node.ino`: `GATEWAY_MAC`, `WIFI_CHANNEL`, `CAL_FACTOR` แล้วอัปโหลด
 gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินาที
 
+**ยังไม่มี load cell?** `MOCK_WEIGHT` ใน `node/node.ino` ตั้งเป็น `1` ไว้ก่อน node จะไม่แตะ HX711 และส่งน้ำหนักจำลอง
+(เริ่ม 350 g ลดทีละ 25 g ทุก 1 นาที) ส่วน HC-SR04 ยังอ่านค่าจริง สั่งผ่าน Serial Monitor ได้:
+`d` จิบ, `r` เติมน้ำ, `l` ยกแก้ว, `p` วางแก้ว, `w280` ตั้งน้ำหนักเอง
+ได้ load cell ใหม่แล้วให้เปลี่ยนเป็น `0` (ถ้า HX711 ไม่ตอบ node จะส่ง `weight_g` เป็น NaN แทนการค้าง)
+
 > `msg.h` ต้องเหมือนกันทั้งสองฝั่ง ถ้าแก้ ให้แก้ที่ `common/msg.h` แล้วคัดลอกไปทับ `node/msg.h` และ `gateway/msg.h`
 > (Arduino IDE ไม่ยอม include ไฟล์นอกโฟลเดอร์ sketch)
 
