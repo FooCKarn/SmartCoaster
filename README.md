@@ -38,7 +38,7 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
 │   ├── t06_ultrasonic/     node
 │   ├── t07_hx711_cal/      node: หา CAL_FACTOR
 │   ├── t08_hx711_weigh/    node: ชั่งจริง
-│   └── t10_line/           gateway: ทดสอบส่ง LINE push
+│   └── t10_line/           gateway: ทดสอบ LINE broadcast
 ├── common/             รูปแบบข้อความ ESP-NOW และ LINE helper (ต้นฉบับ)
 ├── node/               firmware node (อ่านน้ำหนัก+ระยะ → ESP-NOW)
 ├── gateway/            firmware gateway (รับ ESP-NOW + เซนเซอร์ห้อง → Firebase)
@@ -72,7 +72,7 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
    Firebase และ LINE ที่ใช้งานจริง
    (ไฟล์นี้ถูก ignore ไม่ควร commit)
    สำหรับทดสอบ LINE ให้คัดลอก `tests/t10_line/secrets.example.h` เป็น
-   `tests/t10_line/secrets.h` ใส่ค่า Wi-Fi, channel access token และ user ID
+   `tests/t10_line/secrets.h` ใส่ค่า Wi-Fi และ channel access token
 5. เลือกพอร์ตอนุกรมของบอร์ด แล้วใช้ **Upload** หรือ
    `pio run -e <environment> -t upload`; เปิด Serial Monitor ที่ **115200**
    baud ด้วยปุ่ม Monitor หรือ `pio device monitor -b 115200`.
@@ -91,8 +91,8 @@ PlatformIO ดาวน์โหลด framework และไลบรารี�
 1. คัดลอก `gateway/secrets.example.h` เป็น `gateway/secrets.h` แล้วใส่ Wi-Fi (2.4 GHz), URL ของ Firebase RTDB และ LINE credentials
 2. อัปโหลด `gateway/gateway.ino` จด `WiFi channel = X` ที่พิมพ์ออกมา
 
-ทดสอบ mock การแจ้งเตือน LINE ได้จาก Serial Monitor: พิมพ์ `m` เพื่อส่งข้อความจริง
-(ใช้โควตา LINE; สำเร็จแล้วจะพัก 30 นาที) หรือ `q` เพื่อดูจำนวนข้อความที่ใช้
+ทดสอบ LINE broadcast ได้จาก Serial Monitor: พิมพ์ `m` เพื่อส่งข้อความจริง
+ถึงเพื่อนทุกคนของบอท (อาจใช้โควตา LINE; สำเร็จแล้วจะพัก 30 นาที) หรือ `q` เพื่อดูจำนวนข้อความที่ใช้
 คำสั่งนี้เป็นเพียงตัวทดสอบ ยังไม่มีระบบตรวจจับการดื่มอัตโนมัติ
 
 ### 4. Node
@@ -115,6 +115,9 @@ gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินา�
                       room_t, room_rh, sound_p2p, motion_count, ts
 /latest               ค่าล่าสุด (dashboard ใช้แสดงการ์ด)
 ```
+
+แผนพัฒนาเพื่อแยก coaster และข้อมูลตามผู้ใช้ Firebase:
+[docs/user-coaster-linking-plan.md](docs/user-coaster-linking-plan.md)
 
 ## ความลับ
 ไฟล์ที่มีรหัสจริง (`gateway/secrets.h`, `tests/t10_line/secrets.h`,

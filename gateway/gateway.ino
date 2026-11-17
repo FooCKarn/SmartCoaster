@@ -43,13 +43,10 @@ uint32_t readMotionCount() {
 float roomT = NAN, roomRH = NAN;
 int soundP2P = 0;
 
-// Mock reminder controls. A manual serial command is used until drink detection
-// is implemented; an explicit command prevents accidental quota-consuming sends.
+// Manual test trigger until automatic drink detection is implemented.
 const uint32_t LINE_COOLDOWN_MS = 30UL * 60UL * 1000UL;
-const uint32_t LINE_RETRY_MS = 10000UL;
-uint32_t lastLineSuccessMs = 0;
-uint32_t lastLineAttemptMs = 0;
-bool lineAttempted = false;
+uint32_t lastLineMs = 0;
+bool needReminder = false;
 
 void onRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   if (len != sizeof(NodeMsg)) return;
@@ -106,33 +103,11 @@ bool postToFirebase(const NodeMsg &m, int rssi) {
   return code == 200;
 }
 
-void sendMockLineReminder() {
-  const uint32_t now = millis();
-  if (lastLineSuccessMs && now - lastLineSuccessMs < LINE_COOLDOWN_MS) {
-    Serial.println("LINE mock skipped: cooldown active");
-    return;
-  }
-  if (lineAttempted && now - lastLineAttemptMs < LINE_RETRY_MS) {
-    Serial.println("LINE mock skipped: wait 10 s before retrying");
-    return;
-  }
-
-  lineAttempted = true;
-  lastLineAttemptMs = now;
-  String response;
-  int code = linePush(LINE_TOKEN, LINE_USER_ID,
-                      "[MOCK] SmartCoaster reminder: ถึงเวลาดื่มน้ำแล้ว 💧",
-                      &response);
-  Serial.printf("LINE mock push -> %d\n", code);
-  if (code != 200 && response.length()) Serial.println(response);
-  if (code == 200) lastLineSuccessMs = millis();
-}
-
 void handleSerialCommands() {
   while (Serial.available()) {
     const char command = Serial.read();
     if (command == 'm') {
-      sendMockLineReminder();
+      needReminder = true;
     } else if (command == 'q') {
       int usage = lineConsumption(LINE_TOKEN);
       if (usage >= 0) Serial.printf("LINE messages used this month: %d\n", usage);
@@ -163,11 +138,21 @@ void setup() {
   if (esp_now_init() != ESP_OK) { Serial.println("ESP-NOW init FAILED"); while (true) delay(1000); }
   esp_now_register_recv_cb(onRecv);
   Serial.println("Gateway ready");
-  Serial.println("Serial: m = send MOCK LINE reminder (real message/quota), q = show LINE usage");
+  Serial.println("Serial: m = broadcast MOCK LINE reminder, q = show LINE usage");
 }
 
 void loop() {
   handleSerialCommands();
+
+  if (needReminder &&
+      (lastLineMs == 0 || millis() - lastLineMs >= LINE_COOLDOWN_MS)) {
+    String response;
+    int code = lineBroadcast(LINE_TOKEN, "ถึงเวลาดื่มน้ำแล้ว 💧", &response);
+    Serial.printf("LINE broadcast -> %d\n", code);
+    if (code != 200 && response.length()) Serial.println(response);
+    if (code == 200) lastLineMs = millis();
+    needReminder = false;
+  }
 
   // 1) ปุ่มหยุดฉุกเฉิน
   if (estop) { ledcWrite(SERVO_PIN, 0); }

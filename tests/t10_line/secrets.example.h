@@ -4,4 +4,3 @@
 #define WIFI_SSID     "your-2.4GHz-wifi"
 #define WIFI_PASS     "your-wifi-password"
 #define LINE_TOKEN    "paste-channel-access-token-long-lived"
-#define LINE_USER_ID  "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

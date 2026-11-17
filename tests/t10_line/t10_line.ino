@@ -1,8 +1,8 @@
 // tests/t10_line/t10_line.ino
-// Standalone test: can the ESP32 push a LINE message?  (run on the GATEWAY board)
+// Standalone test: can the ESP32 broadcast a LINE message? (run on the GATEWAY board)
 // Serial Monitor 115200:  s = send test message   q = show quota used this month
 #include <WiFi.h>
-#include "secrets.h"     // WIFI_SSID, WIFI_PASS, LINE_TOKEN, LINE_USER_ID
+#include "secrets.h"     // WIFI_SSID, WIFI_PASS, LINE_TOKEN
 #include "line_push.h"
 
 uint32_t lastSendMs = 0;
@@ -30,7 +30,7 @@ void setup() {
   delay(500);
   connectWifi();
   Serial.println("Type 's' = send LINE test message, 'q' = quota used this month");
-  Serial.println("(each send uses 1 message of the free monthly quota)");
+  Serial.println("(broadcasts may use the channel's message quota)");
 }
 
 void loop() {
@@ -42,9 +42,9 @@ void loop() {
         Serial.println("wait 5 s between sends");
       } else {
         String resp;
-        int code = linePush(LINE_TOKEN, LINE_USER_ID,
-                            "SmartCoaster test: ถึงเวลาดื่มน้ำแล้ว 💧", &resp);
-        Serial.printf("LINE push -> %d\n", code);
+        int code = lineBroadcast(LINE_TOKEN,
+                                 "SmartCoaster test: ถึงเวลาดื่มน้ำแล้ว 💧", &resp);
+        Serial.printf("LINE broadcast -> %d\n", code);
         if (code != 200) Serial.println(resp);   // LINE explains the error here
         if (code == 200) lastSendMs = millis();
       }
