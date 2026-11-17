@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include "msg.h"
+#include "line_push.h"
 #include "secrets.h"
 
 const int DHT_PIN = 14, PIR_PIN = 27, SND_AO = 35, SND_DO = 32;
@@ -21,14 +22,31 @@ NodeMsg rxMsg;
 int rxRssi = 0;
 
 // ---- interrupt ----
-volatile uint32_t motionCount = 0;
+uint32_t motionCount = 0;
 volatile bool estop = false;
-void IRAM_ATTR onMotion() { motionCount++; }
+portMUX_TYPE motionMux = portMUX_INITIALIZER_UNLOCKED;
+void IRAM_ATTR onMotion() {
+  portENTER_CRITICAL_ISR(&motionMux);
+  motionCount++;
+  portEXIT_CRITICAL_ISR(&motionMux);
+}
 void IRAM_ATTR onStop()   { estop = true; }
+
+uint32_t readMotionCount() {
+  portENTER_CRITICAL(&motionMux);
+  uint32_t count = motionCount;
+  portEXIT_CRITICAL(&motionMux);
+  return count;
+}
 
 // ---- ค่าเซนเซอร์ gateway ล่าสุด ----
 float roomT = NAN, roomRH = NAN;
 int soundP2P = 0;
+
+// Manual test trigger until automatic drink detection is implemented.
+const uint32_t LINE_COOLDOWN_MS = 30UL * 60UL * 1000UL;
+uint32_t lastLineMs = 0;
+bool needReminder = false;
 
 void onRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   if (len != sizeof(NodeMsg)) return;
@@ -62,7 +80,7 @@ bool postToFirebase(const NodeMsg &m, int rssi) {
   doc["room_t"]    = roomT;
   doc["room_rh"]   = roomRH;
   doc["sound_p2p"] = soundP2P;
-  doc["motion_count"] = (uint32_t)motionCount;
+  doc["motion_count"] = readMotionCount();
   doc["ts"][".sv"] = "timestamp";          // ให้ Firebase ใส่เวลาเอง (ms)
   String body; serializeJson(doc, body);
 
@@ -85,6 +103,19 @@ bool postToFirebase(const NodeMsg &m, int rssi) {
   return code == 200;
 }
 
+void handleSerialCommands() {
+  while (Serial.available()) {
+    const char command = Serial.read();
+    if (command == 'm') {
+      needReminder = true;
+    } else if (command == 'q') {
+      int usage = lineConsumption(LINE_TOKEN);
+      if (usage >= 0) Serial.printf("LINE messages used this month: %d\n", usage);
+      else Serial.println("Failed to read LINE message usage");
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(LED, OUTPUT);
@@ -101,15 +132,28 @@ void setup() {
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("WiFi connecting");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print('.'); }
-  Serial.printf("\nWiFi OK  IP=%s  WiFi channel = %d  <- ใส่เลขนี้ใน node\n",
+  Serial.printf("\nWiFi OK  IP=%s  WiFi channel = %ld  <- ใส่เลขนี้ใน node\n",
                 WiFi.localIP().toString().c_str(), WiFi.channel());
 
   if (esp_now_init() != ESP_OK) { Serial.println("ESP-NOW init FAILED"); while (true) delay(1000); }
   esp_now_register_recv_cb(onRecv);
   Serial.println("Gateway ready");
+  Serial.println("Serial: m = broadcast MOCK LINE reminder, q = show LINE usage");
 }
 
 void loop() {
+  handleSerialCommands();
+
+  if (needReminder &&
+      (lastLineMs == 0 || millis() - lastLineMs >= LINE_COOLDOWN_MS)) {
+    String response;
+    int code = lineBroadcast(LINE_TOKEN, "ถึงเวลาดื่มน้ำแล้ว 💧", &response);
+    Serial.printf("LINE broadcast -> %d\n", code);
+    if (code != 200 && response.length()) Serial.println(response);
+    if (code == 200) lastLineMs = millis();
+    needReminder = false;
+  }
+
   // 1) ปุ่มหยุดฉุกเฉิน
   if (estop) { ledcWrite(SERVO_PIN, 0); }
 
@@ -132,7 +176,7 @@ void loop() {
 
     Serial.printf("RX node=%d seq=%lu w=%.1f d=%.1f rssi=%d | T=%.0f RH=%.0f snd=%d mot=%lu\n",
                   m.node_id, m.seq, m.weight_g, m.dist_cm, rssi,
-                  roomT, roomRH, soundP2P, (uint32_t)motionCount);
+                  roomT, roomRH, soundP2P, readMotionCount());
     digitalWrite(LED, HIGH);
     postToFirebase(m, rssi);
     digitalWrite(LED, LOW);
