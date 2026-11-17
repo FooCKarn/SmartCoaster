@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 
-const int SDA_PIN = 21, SCL_PIN = 22;   // I2C ของ ESP32 (ขา default)
+const int SDA_PIN = 32, SCL_PIN = 35;   // I2C ของ ESP32 (ขา default)
 Adafruit_INA219 ina;                    // ที่อยู่ 0x40 (A0/A1 ไม่ต่อ)
 
 void setup() {
