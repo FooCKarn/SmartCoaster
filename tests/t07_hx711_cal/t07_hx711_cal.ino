@@ -6,6 +6,7 @@ HX711 scale;
 void setup() {
   Serial.begin(115200);
   scale.begin(HX_DT, HX_SCK);
+
   while (!scale.is_ready()) { Serial.println("HX711 not ready - เช็คสาย"); delay(500); }
   Serial.println("ยกทุกอย่างออกจากแท่น แล้วรอ 3 วินาที...");
   delay(3000);

@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1505" viewBox="0 0 1700 1505" font-family="'Noto Sans Thai','Sarabun','Leelawadee UI','Tahoma',sans-serif" xmlns:c2pa="http://c2pa.org/manifest"><rect width="100%" height="100%" fill="#ffffff"/><text x="40" y="46" font-size="26" text-anchor="start" font-weight="700" fill="#1b2a41">t10: TP4056 + แบต 18650 + วัดแรงดันแบต (บอร์ด Node)</text>
+<text x="40" y="72" font-size="14" text-anchor="start" font-weight="400" fill="#555">tests/t10_tp4056  (อ่าน VBAT ที่ GPIO34 ผ่านตัวแบ่ง 100k/100k)</text>
+<rect x="760" y="120" width="300" height="804" rx="10" fill="#20303f" stroke="#0d1620" stroke-width="2"/>
+<rect x="820" y="130" width="180" height="30" rx="3" fill="#38506a" stroke="#5a7896" stroke-width="1"/>
+<text x="910.0" y="151" font-size="11" text-anchor="middle" font-weight="600" fill="#c9d6e3">ANTENNA (ด้านบน)</text>
+<text x="910.0" y="184" font-size="16" text-anchor="middle" font-weight="700" fill="#ffffff">NODE</text>
+<text x="910.0" y="204" font-size="12" text-anchor="middle" font-weight="400" fill="#c9d6e3">ESP32 DevKit V1 (DOIT 30 ขา)</text>
+<rect x="876.0" y="898" width="68" height="26" rx="3" fill="#9aa5b1" stroke="#555" stroke-width="1"/>
+<text x="910.0" y="916" font-size="12" text-anchor="middle" font-weight="700" fill="#222">USB</text>
+<polyline points="738,220 760,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="225" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">EN</text>
+<polyline points="738,266 760,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="271" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VP (GPIO36)</text>
+<polyline points="738,312 760,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="317" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VN (GPIO39)</text>
+<polyline points="738,358 760,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="363" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">D34  ·  GPIO34</text>
+<polyline points="738,404 760,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="409" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D35  ·  GPIO35</text>
+<polyline points="738,450 760,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="455" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D32  ·  GPIO32</text>
+<polyline points="738,496 760,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="501" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D33  ·  GPIO33</text>
+<polyline points="738,542 760,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="547" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D25  ·  GPIO25</text>
+<polyline points="738,588 760,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="593" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D26  ·  GPIO26</text>
+<polyline points="738,634 760,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="639" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D27  ·  GPIO27</text>
+<polyline points="738,680 760,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="685" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D14  ·  GPIO14</text>
+<polyline points="738,726 760,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="731" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D12  ·  GPIO12</text>
+<polyline points="738,772 760,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="777" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D13  ·  GPIO13</text>
+<polyline points="738,818 760,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="823" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">GND</text>
+<polyline points="738,864 760,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="869" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VIN</text>
+<polyline points="1060,220 1082,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="225" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D23  ·  GPIO23</text>
+<polyline points="1060,266 1082,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="271" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D22  ·  GPIO22</text>
+<polyline points="1060,312 1082,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="317" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX0 (GPIO1)</text>
+<polyline points="1060,358 1082,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="363" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX0 (GPIO3)</text>
+<polyline points="1060,404 1082,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="409" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D21  ·  GPIO21</text>
+<polyline points="1060,450 1082,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="455" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D19  ·  GPIO19</text>
+<polyline points="1060,496 1082,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="501" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D18  ·  GPIO18</text>
+<polyline points="1060,542 1082,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="547" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D5  ·  GPIO5</text>
+<polyline points="1060,588 1082,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="593" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX2 (GPIO17)</text>
+<polyline points="1060,634 1082,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="639" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX2 (GPIO16)</text>
+<polyline points="1060,680 1082,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="685" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D4  ·  GPIO4</text>
+<polyline points="1060,726 1082,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="731" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D2  ·  GPIO2</text>
+<polyline points="1060,772 1082,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="777" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D15  ·  GPIO15</text>
+<polyline points="1060,818 1082,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="823" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">GND</text>
+<polyline points="1060,864 1082,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="869" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">3V3</text>
+<text x="910.0" y="946" font-size="13" text-anchor="middle" font-weight="700" fill="#1b2a41">เสียบ USB เข้าคอมพิวเตอร์ (จ่ายไฟ + Serial 115200)</text>
+<rect x="40" y="500" width="150" height="150" rx="8" fill="#fdeeee" stroke="#b85450" stroke-width="2"/>
+<text x="115.0" y="522" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">แบต 18650</text>
+<text x="115.0" y="540" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">3.0–4.2 V</text>
+<text x="115.0" y="556" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">เช็คขั้วก่อนใส่</text>
+<rect x="185" y="560" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="180" y="570" font-size="13" text-anchor="end" font-weight="600" fill="#333">B+</text>
+<rect x="185" y="606" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="180" y="616" font-size="13" text-anchor="end" font-weight="600" fill="#333">B−</text>
+<rect x="300" y="470" width="220" height="200" rx="8" fill="#fdeeee" stroke="#b85450" stroke-width="2"/>
+<text x="410.0" y="492" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">TP4056 (มีวงจรป้องกัน)</text>
+<text x="410.0" y="510" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">ช่อง USB บนโมดูล = เสียบชาร์จ</text>
+<text x="410.0" y="526" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">LED แดง = กำลังชาร์จ</text>
+<text x="410.0" y="542" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">LED น้ำเงิน/เขียว = เต็ม</text>
+<rect x="295" y="560" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="310" y="570" font-size="13" text-anchor="start" font-weight="600" fill="#333">B+</text>
+<rect x="295" y="606" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="310" y="616" font-size="13" text-anchor="start" font-weight="600" fill="#333">B−</text>
+<rect x="515" y="560" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="510" y="570" font-size="13" text-anchor="end" font-weight="600" fill="#333">OUT+</text>
+<rect x="515" y="606" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="510" y="616" font-size="13" text-anchor="end" font-weight="600" fill="#333">OUT−</text>
+<polyline points="190,565 300,565" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="190,611 300,611" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="410.0" y="700" font-size="12" text-anchor="middle" font-weight="700" fill="#7a2e00">วัดมัลติมิเตอร์ที่ OUT+ เทียบ OUT−</text>
+<polyline points="520,565 550,565 550,228 660,228" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="581.6" y="203" width="46.8" height="19" rx="4" fill="#ffffff" stroke="#8c564b" stroke-width="1.2"/>
+<text x="605.0" y="217" font-size="12" text-anchor="middle" font-weight="700" fill="#8c564b">VBAT</text>
+<polyline points="660,228 660,273.0" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="660,313.0 660,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="651" y="273.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="645" y="298.0" font-size="13" text-anchor="end" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="660,358 738,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="660" cy="358" r="5" fill="#8c564b"/>
+<polyline points="660,358 660,398.0" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="660,438.0 660,478" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="651" y="398.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="675" y="423.0" font-size="13" text-anchor="start" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="660,478 660,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="660" cy="818" r="5" fill="#222222"/>
+<polyline points="660,358 600,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="600,358 600,383.0" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="600,393.0 600,418" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="586,383.0 614,383.0" fill="none" stroke="#333" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M586,397.0 Q600,389.0 614,397.0" fill="none" stroke="#333" stroke-width="3"/>
+<text x="620" y="393.0" font-size="13" text-anchor="start" font-weight="700" fill="#333"></text>
+<text x="610" y="470" font-size="13" text-anchor="start" font-weight="700" fill="#333">100nF</text>
+<polyline points="600,418 600,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="600" cy="818" r="5" fill="#222222"/>
+<polyline points="520,611 535,611 535,818 738,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="40" y="994" width="1620" height="481" rx="8" fill="#fff8e6" stroke="#d9a400" stroke-width="1.5"/>
+<text x="56" y="1020" font-size="15" text-anchor="start" font-weight="700" fill="#5c4400">เช็กลิสต์ทดสอบ</text>
+<text x="56" y="1044" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ต่อสาย</text>
+<text x="56" y="1065" font-size="13" text-anchor="start" font-weight="400" fill="#333">   1) แบต 18650 ขั้ว + → TP4056 B+</text>
+<text x="56" y="1086" font-size="13" text-anchor="start" font-weight="400" fill="#333">   2) แบต 18650 ขั้ว − → TP4056 B−</text>
+<text x="56" y="1107" font-size="13" text-anchor="start" font-weight="400" fill="#333">   3) TP4056 OUT+ → ตัวต้านทาน 100kΩ ตัวบน → จุดกลาง</text>
+<text x="56" y="1128" font-size="13" text-anchor="start" font-weight="400" fill="#333">   4) จุดกลาง → D34 (GPIO34)</text>
+<text x="56" y="1149" font-size="13" text-anchor="start" font-weight="400" fill="#333">   5) จุดกลาง → ตัวต้านทาน 100kΩ ตัวล่าง → GND</text>
+<text x="56" y="1170" font-size="13" text-anchor="start" font-weight="400" fill="#333">   6) จุดกลาง → C 100nF → GND</text>
+<text x="56" y="1191" font-size="13" text-anchor="start" font-weight="400" fill="#333">   7) TP4056 OUT− → GND ของ ESP32</text>
+<text x="56" y="1212" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ผลที่ควรเห็นใน Serial Monitor (115200)</text>
+<text x="56" y="1233" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • t10 TP4056 + battery sense (GPIO34) แล้วตามด้วยบรรทัดแบบนี้ทุก 1 วินาที</text>
+<text x="56" y="1254" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • pin = 1910 mV  VBAT = 3.82 V  ~60 %  d30s = +0.000 V  [ok]</text>
+<text x="56" y="1275" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • VBAT ต้องต่างจากมัลติมิเตอร์ (วัด OUT+ เทียบ OUT−) ไม่เกิน 0.05 V</text>
+<text x="56" y="1296" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ถ้าต่างคงที่ ให้ตั้ง VBAT_GAIN = ค่ามัลติมิเตอร์ ÷ ค่าที่อ่านได้</text>
+<text x="56" y="1317" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • เสียบสายชาร์จที่ TP4056 → LED แดงติด และ d30s เป็นบวก (แรงดันค่อยๆ ขึ้น)</text>
+<text x="56" y="1338" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ชาร์จเต็ม → VBAT ≈ 4.20 V และ LED เปลี่ยนเป็นน้ำเงินหรือเขียว</text>
+<text x="56" y="1359" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ข้อควรระวัง</text>
+<text x="56" y="1380" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ใช้ TP4056 รุ่น 6 ขา (มีวงจรป้องกัน) และต่อโหลดที่ OUT+ กับ OUT− เท่านั้น ห้ามต่อโหลดที่ B−</text>
+<text x="56" y="1401" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ใส่แบตกลับขั้ว TP4056 พังทันที ให้เช็คขั้วด้วยมัลติมิเตอร์ก่อน</text>
+<text x="56" y="1422" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • เทสนี้ ESP32 ใช้ไฟ USB อย่างเดียว ห้ามต่อ VBAT เข้าขา 3V3 หรือ VIN</text>
+<text x="56" y="1443" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • VBAT อ่านได้ 0 = สาย OUT+ หรือตัวต้านทานตัวบนหลุด</text>
+<text x="56" y="1464" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • VBAT สูงเกิน 4.25 V = ตัวต้านทานผิดค่า (ต้องเป็น 100k ทั้งสองตัว)</text><metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTowZjU0YjM3Ny1lZjY1LTQ1NzktOWQ4My02Y2M5NDEzODk3NmUAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaHwp3U4A3AHCAUk4IqOJw0gAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo1MTcyOGE1Ny03YzcxLTQ0YTgtYWVmNi0zODFkODQwMWJkYWNscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoKaqht5bVEeVfYTbt6IOH+gAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFgg9p6g+csotuSG5Ol9P8XGbiWLk2hAkGgL3RexOwzq+1KkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaKG5u/VFIuHhEd9cuHuzdXYAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYID0mTa0HsTLqMzIpiILTBw98iNTqL9PUgYgJkTv5+W3iZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GUn6Zmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjBmNTRiMzc3LWVmNjUtNDU3OS05ZDgzLTZjYzk0MTM4OTc2ZS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjgxM2Y4Mjg3LTlhODUtNDA1ZS04YjMzLWFmNzVlNDcyYjAzMXJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCD2nqD5yyi25Ibk6X0/xcZuJYuTaECQaAvdF7E7DOr7UqJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggaCOo+OGoE+a4alBumNoA/tVn4BKuup196xo12Li3v7eiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggGAJUiWXRFRPrq8+jNGEfP1y4f/E0yFio2qQlDmCpWcN0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQHe89fCuXCCwKSkY6oUaY6ieRtYU1v6xtilgkAqN3uJqqIUdOy7EmtY9V+f6YxsalP2RmBiadWxAdHWSW61rwSw=</c2pa:manifest></metadata></svg>

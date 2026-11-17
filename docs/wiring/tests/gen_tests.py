@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Per-sensor test wiring diagrams (tests/t01–t09). Uses helpers from ../gen.py style.
+"""Per-sensor test wiring diagrams (tests/t01–t11). Uses helpers from ../gen.py style.
 
 Run: python3 gen_tests.py <out_dir>   -> writes t0X-*.svg
 """
@@ -12,18 +12,18 @@ MX, MW = 230, 250          # left module column
 TOP = 120
 
 
-def base(title, sub, used, board):
+def base(title, sub, used, board, usb_text="เสียบ USB เข้าคอมพิวเตอร์ (จ่ายไฟ + Serial 115200)", usb_color="#1b2a41"):
     s = SVG(W, 1300)
     s.text(40, 46, title, 26, "start", 700, "#1b2a41")
     s.text(40, 72, sub, 14, "start", 400, "#555")
     pts, y0, bot = esp32(s, TOP, used, board)
-    s.text(ESP_X + ESP_W / 2, bot + 22, "เสียบ USB เข้าคอมพิวเตอร์ (จ่ายไฟ + Serial 115200)", 13, "middle", 700, "#1b2a41")
+    s.text(ESP_X + ESP_W / 2, bot + 22, usb_text, 13, "middle", 700, usb_color)
     return s, pts, (lambda i: y0 + i * P), bot
 
 
-def finish(s, bot, wires, expect, extra=None):
+def finish(s, bot, wires, expect, extra=None, expect_title="ผลที่ควรเห็นใน Serial Monitor (115200)"):
     lines = ["▸ ต่อสาย"] + [f"   {i+1}) {w}" for i, w in enumerate(wires)]
-    lines += ["▸ ผลที่ควรเห็นใน Serial Monitor (115200)"] + [f"   • {e}" for e in expect]
+    lines += [f"▸ {expect_title}"] + [f"   • {e}" for e in expect]
     if extra:
         lines += ["▸ ข้อควรระวัง"] + [f"   • {e}" for e in extra]
     end = notes_box(s, 40, bot + 70, W - 80, "เช็กลิสต์ทดสอบ", lines)
@@ -272,9 +272,142 @@ def t09():
                    "ตอนวัดโหนดจริง (E3): VIN+ ← TP4056 OUT+, VIN− → VBAT (ดู pin-table.md ข้อ 1) · GND ของ INA219 ต้องร่วมกับ ESP32"])
 
 
+# ---------------------------------------------------------------- t10
+def t10():
+    used = {"D34": 1, "GNDL": 1}
+    s, pts, ry, bot = base("t10: TP4056 + แบต 18650 + วัดแรงดันแบต (บอร์ด Node)",
+                           "tests/t10_tp4056  (อ่าน VBAT ที่ GPIO34 ผ่านตัวแบ่ง 100k/100k)", used, "NODE")
+    # แบต + TP4056 ฝั่งซ้าย
+    s.module(40, 500, 150, 150, "แบต 18650", ["3.0–4.2 V", "เช็คขั้วก่อนใส่"], fill="#fdeeee", stroke="#b85450")
+    s.mpin(190, 565, "B+", "right"); s.mpin(190, 611, "B−", "right")
+    tx, tw = 300, 220
+    s.module(tx, 470, tw, 200, "TP4056 (มีวงจรป้องกัน)",
+             ["ช่อง USB บนโมดูล = เสียบชาร์จ", "LED แดง = กำลังชาร์จ", "LED น้ำเงิน/เขียว = เต็ม"],
+             fill="#fdeeee", stroke="#b85450")
+    s.mpin(tx, 565, "B+", "left"); s.mpin(tx, 611, "B−", "left")
+    s.mpin(tx + tw, 565, "OUT+", "right"); s.mpin(tx + tw, 611, "OUT−", "right")
+    s.line([(190, 565), (tx, 565)], C["5v"]); s.line([(190, 611), (tx, 611)], C["gnd"])
+    s.text(tx + tw / 2, 700, "วัดมัลติมิเตอร์ที่ OUT+ เทียบ OUT−", 12, "middle", 700, "#7a2e00")
+    # ตัวแบ่ง 100k/100k ที่ D34
+    x34, y34 = pts["D34"]
+    xg, yg = pts["GNDL"]
+    nx, cx, ytop = 660, 600, 228
+    s.line([(tx + tw, 565), (550, 565), (550, ytop), (nx, ytop)], C["vbat"])
+    s.wire_label((550 + nx) / 2, ytop, "VBAT", C["vbat"])
+    s.resistor_v(nx, ytop, y34, "100kΩ", C["vbat"], "left")
+    s.line([(nx, y34), (x34, y34)], C["vbat"]); s.dot(nx, y34, C["vbat"])
+    s.resistor_v(nx, y34, y34 + 120, "100kΩ", C["gnd"], "right")
+    s.line([(nx, y34 + 120), (nx, yg)], C["gnd"]); s.dot(nx, yg, C["gnd"])
+    s.line([(nx, y34), (cx, y34)], C["vbat"])
+    s.cap_v(cx, y34, y34 + 60, "", C["vbat"], polar=False)
+    s.text(cx + 10, y34 + 112, "100nF", 13, "start", 700, "#333")
+    s.line([(cx, y34 + 60), (cx, yg)], C["gnd"]); s.dot(cx, yg, C["gnd"])
+    # OUT− → ราง GND → ขา GND ของ ESP32
+    s.line([(tx + tw, 611), (535, 611), (535, yg), (xg, yg)], C["gnd"])
+    return finish(s, bot,
+                  ["แบต 18650 ขั้ว + → TP4056 B+",
+                   "แบต 18650 ขั้ว − → TP4056 B−",
+                   "TP4056 OUT+ → ตัวต้านทาน 100kΩ ตัวบน → จุดกลาง",
+                   "จุดกลาง → D34 (GPIO34)",
+                   "จุดกลาง → ตัวต้านทาน 100kΩ ตัวล่าง → GND",
+                   "จุดกลาง → C 100nF → GND",
+                   "TP4056 OUT− → GND ของ ESP32"],
+                  ["t10 TP4056 + battery sense (GPIO34) แล้วตามด้วยบรรทัดแบบนี้ทุก 1 วินาที",
+                   "pin = 1910 mV  VBAT = 3.82 V  ~60 %  d30s = +0.000 V  [ok]",
+                   "VBAT ต้องต่างจากมัลติมิเตอร์ (วัด OUT+ เทียบ OUT−) ไม่เกิน 0.05 V",
+                   "ถ้าต่างคงที่ ให้ตั้ง VBAT_GAIN = ค่ามัลติมิเตอร์ ÷ ค่าที่อ่านได้",
+                   "เสียบสายชาร์จที่ TP4056 → LED แดงติด และ d30s เป็นบวก (แรงดันค่อยๆ ขึ้น)",
+                   "ชาร์จเต็ม → VBAT ≈ 4.20 V และ LED เปลี่ยนเป็นน้ำเงินหรือเขียว"],
+                  ["ใช้ TP4056 รุ่น 6 ขา (มีวงจรป้องกัน) และต่อโหลดที่ OUT+ กับ OUT− เท่านั้น ห้ามต่อโหลดที่ B−",
+                   "ใส่แบตกลับขั้ว TP4056 พังทันที ให้เช็คขั้วด้วยมัลติมิเตอร์ก่อน",
+                   "เทสนี้ ESP32 ใช้ไฟ USB อย่างเดียว ห้ามต่อ VBAT เข้าขา 3V3 หรือ VIN",
+                   "VBAT อ่านได้ 0 = สาย OUT+ หรือตัวต้านทานตัวบนหลุด",
+                   "VBAT สูงเกิน 4.25 V = ตัวต้านทานผิดค่า (ต้องเป็น 100k ทั้งสองตัว)"])
+
+
+# ---------------------------------------------------------------- t11
+def t11():
+    used = {"3V3": 1, "GNDR": 1, "D34": 1, "GNDL": 1}
+    s, pts, ry, bot = base("t11: LDO 3.3 V จ่ายไฟให้ ESP32 จากแบต (บอร์ด Node)",
+                           "tests/t11_ldo_3v3  (ESP32 กินไฟผ่านขา 3V3 แล้วจดผลลง flash ให้เสียบ USB อ่านทีหลัง)",
+                           used, "NODE",
+                           usb_text="ตอนรันด้วยไฟจาก LDO ห้ามเสียบ USB (เสียบเฉพาะตอนอัปโหลดและตอนอ่าน log)",
+                           usb_color="#b00020")
+    # แบต → TP4056 (ขวาบน)
+    s.module(1130, 170, 150, 130, "แบต 18650", ["3.0–4.2 V"], fill="#fdeeee", stroke="#b85450")
+    s.mpin(1280, 230, "B+", "right"); s.mpin(1280, 265, "B−", "right")
+    tx, tw = 1370, 250
+    s.module(tx, 150, tw, 170, "TP4056 (มีวงจรป้องกัน)", ["ต่อแบบเดียวกับ t10"], fill="#fdeeee", stroke="#b85450")
+    s.mpin(tx, 230, "B+", "left"); s.mpin(tx, 265, "B−", "left")
+    s.mpin(tx + tw, 230, "OUT+", "right"); s.mpin(tx + tw, 265, "OUT−", "right")
+    s.line([(1280, 230), (tx, 230)], C["5v"]); s.line([(1280, 265), (tx, 265)], C["gnd"])
+    s.line([(tx + tw, 265), (tx + tw + 20, 265)], C["gnd"]); s.gnd(tx + tw + 20, 265)
+    # OUT+ (VBAT) → LDO VIN
+    lx, lw, ly = 1340, 260, 420
+    vx = tx + tw + 45
+    s.line([(tx + tw, 230), (vx, 230), (vx, ly + 50), (lx + lw, ly + 50)], C["vbat"])
+    s.dot(vx, 370, C["vbat"]); s.flag(vx, 370, "VBAT", C["vbat"], "left")
+    s.module(lx, ly, lw, 110, "LDO 3.3 V", ["AP2112K หรือ ME6211", "ห้ามใช้ AMS1117"], fill="#fff2e0", stroke="#d98200")
+    s.mpin(lx + lw, ly + 50, "VIN", "right"); s.mpin(lx, ly + 50, "VOUT", "left")
+    s.mpin(lx + lw / 2, ly + 110, "GND", "bottom"); s.gnd(lx + lw / 2, ly + 110)
+    # VOUT → C → ขา 3V3
+    x3, y3 = pts["3V3"]
+    rx = 1180
+    s.line([(lx, ly + 50), (rx, ly + 50), (rx, y3), (x3, y3)], C["3v3"])
+    s.wire_label((x3 + rx) / 2, y3, "→ 3V3", C["3v3"])
+    s.dot(rx, 620, C["3v3"]); s.line([(rx, 620), (1240, 620)], C["3v3"])
+    s.cap_v(1240, 620, 690, "10µF + 100µF", C["3v3"])
+    s.text(1260, 680, "(วางชิดขา 3V3)", 11, "start", 400, "#555")
+    s.gnd(1240, 690)
+    s.text(1200, 770, "วัดขา 3V3 ขณะรัน ต้องไม่ต่ำกว่า 3.2 V", 12, "start", 700, "#7a4a00")
+    xg, yg = pts["GNDR"]
+    s.line([(xg, yg), (xg + 48, yg)], C["gnd"]); s.gnd(xg + 48, yg, down=False)
+    # ตัวแบ่งวัดแบต (ค้างไว้จาก t10 ไม่บังคับ)
+    x34, y34 = pts["D34"]
+    nx, cx = 660, 600
+    s.line([(x34, y34), (nx, y34)], C["vbat"]); s.dot(nx, y34, C["vbat"])
+    s.resistor_v(nx, y34 - 110, y34, "100kΩ", C["vbat"], "left")
+    s.flag(nx, y34 - 110, "VBAT", C["vbat"], "up")
+    s.resistor_v(nx, y34, y34 + 110, "100kΩ", C["gnd"], "right"); s.gnd(nx, y34 + 110)
+    s.line([(nx, y34), (cx, y34)], C["vbat"])
+    s.cap_v(cx, y34, y34 + 60, "", C["vbat"], polar=False); s.gnd(cx, y34 + 60)
+    s.text(cx - 18, y34 + 35, "100nF", 13, "end", 700, "#333")
+    s.text(610, y34 + 180, "ตัวแบ่งวัดแบตจาก t10 (ไม่บังคับ)", 12, "middle", 700, C["vbat"])
+    s.text(610, y34 + 198, "ถ้าต่อไว้ log จะมี VBAT ต่ำสุดด้วย", 11, "middle", 400, "#555")
+    xl, yl = pts["GNDL"]
+    s.line([(xl, yl), (xl - 30, yl)], C["gnd"]); s.gnd(xl - 30, yl)
+    xv, yv = pts["VIN"]
+    s.text(xv - 8, yv + 5, "ไม่ต่อ", 12, "end", 400, "#999", italic=True)
+    return finish(s, bot,
+                  ["แบต 18650 → TP4056 B+ และ B− (เหมือน t10)",
+                   "TP4056 OUT+ (VBAT) → LDO VIN",
+                   "LDO VOUT → ขา 3V3 ของ ESP32",
+                   "C 10µF และ 100µF คร่อม 3V3 กับ GND วางชิดขา 3V3 (ขาบวกไป 3V3)",
+                   "TP4056 OUT− กับ LDO GND กับ GND ของ ESP32 ต่อถึงกันทั้งหมด (สัญลักษณ์กราวด์ทุกอันคือจุดเดียวกัน)",
+                   "ขา VIN ของ ESP32 ไม่ต่อ",
+                   "ตัวแบ่ง 100k/100k ที่ D34 จาก t10 ค้างไว้ได้ (ไม่บังคับ)"],
+                  ["ขั้น 1: ยังไม่ต่อ VOUT เข้า ESP32 วัด LDO VOUT เทียบ GND ด้วยมัลติมิเตอร์ ต้องได้ 3.25–3.35 V",
+                   "ขั้น 2: เสียบ USB อัปโหลด t11 เปิด Serial Monitor 115200 ส่ง c เพื่อล้าง log แล้วถอด USB",
+                   "ขั้น 3: ต่อ VOUT เข้า 3V3 → LED บนบอร์ดกะพริบช้า (1 ครั้งต่อวินาที) ปล่อยไว้ 3–5 นาที",
+                   "ระหว่างรอ วัดขา 3V3 ด้วยมัลติมิเตอร์ ต้องไม่ต่ำกว่า 3.2 V",
+                   "ขั้น 4: ถอดสาย VOUT ออกจาก 3V3 ก่อน แล้วค่อยเสียบ USB → Serial พิมพ์ผลของรอบที่รันจาก LDO",
+                   "ตัวอย่างผล: รอบก่อนรันได้ 240 s",
+                   "ตัวอย่างผล: brownout สะสม = 0",
+                   "ตัวอย่างผล: VBAT ต่ำสุดรอบก่อน = 3850 mV",
+                   "ผ่าน = brownout เป็น 0 และเวลาที่รันได้ตรงกับเวลาที่ปล่อยไว้"],
+                  ["ห้ามเสียบ USB ขณะ LDO จ่ายเข้า 3V3 (ไฟสองแหล่งชนกันบนราง 3.3 V)",
+                   "LED กะพริบเร็ว (5 ครั้งต่อวินาที) = เคยเกิด brownout ตั้งแต่ล้าง log",
+                   "ถ้า brownout: เช็คว่า C 100µF อยู่ชิดขา 3V3 และสายไฟสั้นพอ",
+                   "ถ้า brownout: LDO ต้องจ่ายได้อย่างน้อย 500 mA และแบตต้องไม่ใกล้หมด",
+                   "ห้ามใช้ AMS1117 เพราะต้องการไฟเข้าอย่างน้อยประมาณ 4.3 V (แบตให้ได้แค่ 3.0–4.2 V)",
+                   "ถ้าเป็นชิป AP2112K เปล่า ขา EN ต้องต่อเข้า VIN ไม่อย่างนั้น LDO ไม่จ่ายไฟ"],
+                  expect_title="ขั้นตอนทดสอบ")
+
+
 if __name__ == "__main__":
     out = sys.argv[1]
     for name, fn in [("t01-blink", t01), ("t02-dht11", t02), ("t03-pir", t03), ("t04-sound", t04),
-                     ("t05-servo", t05), ("t06-ultrasonic", t06), ("t07-t08-hx711", t07), ("t09-ina219", t09)]:
+                     ("t05-servo", t05), ("t06-ultrasonic", t06), ("t07-t08-hx711", t07), ("t09-ina219", t09),
+                     ("t10-tp4056", t10), ("t11-ldo-3v3", t11)]:
         fn().save(f"{out}/{name}.svg")
     print("ok")

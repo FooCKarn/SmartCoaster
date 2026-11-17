@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1589" viewBox="0 0 1700 1589" font-family="'Noto Sans Thai','Sarabun','Leelawadee UI','Tahoma',sans-serif" xmlns:c2pa="http://c2pa.org/manifest"><rect width="100%" height="100%" fill="#ffffff"/><text x="40" y="46" font-size="26" text-anchor="start" font-weight="700" fill="#1b2a41">t11: LDO 3.3 V จ่ายไฟให้ ESP32 จากแบต (บอร์ด Node)</text>
+<text x="40" y="72" font-size="14" text-anchor="start" font-weight="400" fill="#555">tests/t11_ldo_3v3  (ESP32 กินไฟผ่านขา 3V3 แล้วจดผลลง flash ให้เสียบ USB อ่านทีหลัง)</text>
+<rect x="760" y="120" width="300" height="804" rx="10" fill="#20303f" stroke="#0d1620" stroke-width="2"/>
+<rect x="820" y="130" width="180" height="30" rx="3" fill="#38506a" stroke="#5a7896" stroke-width="1"/>
+<text x="910.0" y="151" font-size="11" text-anchor="middle" font-weight="600" fill="#c9d6e3">ANTENNA (ด้านบน)</text>
+<text x="910.0" y="184" font-size="16" text-anchor="middle" font-weight="700" fill="#ffffff">NODE</text>
+<text x="910.0" y="204" font-size="12" text-anchor="middle" font-weight="400" fill="#c9d6e3">ESP32 DevKit V1 (DOIT 30 ขา)</text>
+<rect x="876.0" y="898" width="68" height="26" rx="3" fill="#9aa5b1" stroke="#555" stroke-width="1"/>
+<text x="910.0" y="916" font-size="12" text-anchor="middle" font-weight="700" fill="#222">USB</text>
+<polyline points="738,220 760,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="225" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">EN</text>
+<polyline points="738,266 760,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="271" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VP (GPIO36)</text>
+<polyline points="738,312 760,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="317" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VN (GPIO39)</text>
+<polyline points="738,358 760,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="363" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">D34  ·  GPIO34</text>
+<polyline points="738,404 760,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="409" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D35  ·  GPIO35</text>
+<polyline points="738,450 760,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="455" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D32  ·  GPIO32</text>
+<polyline points="738,496 760,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="501" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D33  ·  GPIO33</text>
+<polyline points="738,542 760,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="547" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D25  ·  GPIO25</text>
+<polyline points="738,588 760,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="593" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D26  ·  GPIO26</text>
+<polyline points="738,634 760,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="639" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D27  ·  GPIO27</text>
+<polyline points="738,680 760,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="685" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D14  ·  GPIO14</text>
+<polyline points="738,726 760,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="731" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D12  ·  GPIO12</text>
+<polyline points="738,772 760,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="777" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D13  ·  GPIO13</text>
+<polyline points="738,818 760,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="823" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">GND</text>
+<polyline points="738,864 760,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="869" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VIN</text>
+<polyline points="1060,220 1082,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="225" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D23  ·  GPIO23</text>
+<polyline points="1060,266 1082,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="271" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D22  ·  GPIO22</text>
+<polyline points="1060,312 1082,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="317" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX0 (GPIO1)</text>
+<polyline points="1060,358 1082,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="363" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX0 (GPIO3)</text>
+<polyline points="1060,404 1082,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="409" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D21  ·  GPIO21</text>
+<polyline points="1060,450 1082,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="455" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D19  ·  GPIO19</text>
+<polyline points="1060,496 1082,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="501" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D18  ·  GPIO18</text>
+<polyline points="1060,542 1082,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="547" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D5  ·  GPIO5</text>
+<polyline points="1060,588 1082,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="593" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX2 (GPIO17)</text>
+<polyline points="1060,634 1082,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="639" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX2 (GPIO16)</text>
+<polyline points="1060,680 1082,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="685" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D4  ·  GPIO4</text>
+<polyline points="1060,726 1082,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="731" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D2  ·  GPIO2</text>
+<polyline points="1060,772 1082,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="777" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D15  ·  GPIO15</text>
+<polyline points="1060,818 1082,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="823" font-size="13" text-anchor="end" font-weight="700" fill="#ffd166">GND</text>
+<polyline points="1060,864 1082,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="869" font-size="13" text-anchor="end" font-weight="700" fill="#ffd166">3V3</text>
+<text x="910.0" y="946" font-size="13" text-anchor="middle" font-weight="700" fill="#b00020">ตอนรันด้วยไฟจาก LDO ห้ามเสียบ USB (เสียบเฉพาะตอนอัปโหลดและตอนอ่าน log)</text>
+<rect x="1130" y="170" width="150" height="130" rx="8" fill="#fdeeee" stroke="#b85450" stroke-width="2"/>
+<text x="1205.0" y="192" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">แบต 18650</text>
+<text x="1205.0" y="210" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">3.0–4.2 V</text>
+<rect x="1275" y="225" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1270" y="235" font-size="13" text-anchor="end" font-weight="600" fill="#333">B+</text>
+<rect x="1275" y="260" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1270" y="270" font-size="13" text-anchor="end" font-weight="600" fill="#333">B−</text>
+<rect x="1370" y="150" width="250" height="170" rx="8" fill="#fdeeee" stroke="#b85450" stroke-width="2"/>
+<text x="1495.0" y="172" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">TP4056 (มีวงจรป้องกัน)</text>
+<text x="1495.0" y="190" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">ต่อแบบเดียวกับ t10</text>
+<rect x="1365" y="225" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1380" y="235" font-size="13" text-anchor="start" font-weight="600" fill="#333">B+</text>
+<rect x="1365" y="260" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1380" y="270" font-size="13" text-anchor="start" font-weight="600" fill="#333">B−</text>
+<rect x="1615" y="225" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1610" y="235" font-size="13" text-anchor="end" font-weight="600" fill="#333">OUT+</text>
+<rect x="1615" y="260" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1610" y="270" font-size="13" text-anchor="end" font-weight="600" fill="#333">OUT−</text>
+<polyline points="1280,230 1370,230" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1280,265 1370,265" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1620,265 1640,265" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1640,265 1640,281" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1627,281 1653,281" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1632,286 1648,286" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1637,291 1643,291" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1620,230 1665,230 1665,470 1600,470" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1665" cy="370" r="5" fill="#8c564b"/>
+<polyline points="1665,370 1651,370" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1651,370 L1641,357.0 L1597,357.0 L1597,383.0 L1641,383.0 Z" fill="#8c564b"/>
+<text x="1619.0" y="375" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">VBAT</text>
+<rect x="1340" y="420" width="260" height="110" rx="8" fill="#fff2e0" stroke="#d98200" stroke-width="2"/>
+<text x="1470.0" y="442" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">LDO 3.3 V</text>
+<text x="1470.0" y="460" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">AP2112K หรือ ME6211</text>
+<text x="1470.0" y="476" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">ห้ามใช้ AMS1117</text>
+<rect x="1595" y="465" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1590" y="475" font-size="13" text-anchor="end" font-weight="600" fill="#333">VIN</text>
+<rect x="1335" y="465" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1350" y="475" font-size="13" text-anchor="start" font-weight="600" fill="#333">VOUT</text>
+<rect x="1465.0" y="525" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="1470.0" y="518" font-size="13" text-anchor="middle" font-weight="600" fill="#333">GND</text>
+<polyline points="1470.0,530 1470.0,546" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1457.0,546 1483.0,546" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1462.0,551 1478.0,551" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1467.0,556 1473.0,556" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1340,470 1180,470 1180,864 1082,864" fill="none" stroke="#f28e00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1103.5" y="839" width="55.0" height="19" rx="4" fill="#ffffff" stroke="#f28e00" stroke-width="1.2"/>
+<text x="1131.0" y="853" font-size="12" text-anchor="middle" font-weight="700" fill="#f28e00">→ 3V3</text>
+<circle cx="1180" cy="620" r="5" fill="#f28e00"/>
+<polyline points="1180,620 1240,620" fill="none" stroke="#f28e00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1240,620 1240,650.0" fill="none" stroke="#f28e00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1240,660.0 1240,690" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1226,650.0 1254,650.0" fill="none" stroke="#333" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1226,664.0 Q1240,656.0 1254,664.0" fill="none" stroke="#333" stroke-width="3"/>
+<text x="1220" y="647.0" font-size="14" text-anchor="middle" font-weight="700" fill="#333">+</text>
+<text x="1260" y="660.0" font-size="13" text-anchor="start" font-weight="700" fill="#333">10µF + 100µF</text>
+<text x="1260" y="680" font-size="11" text-anchor="start" font-weight="400" fill="#555">(วางชิดขา 3V3)</text>
+<polyline points="1240,690 1240,706" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1227,706 1253,706" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1232,711 1248,711" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1237,716 1243,716" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1200" y="770" font-size="12" text-anchor="start" font-weight="700" fill="#7a4a00">วัดขา 3V3 ขณะรัน ต้องไม่ต่ำกว่า 3.2 V</text>
+<polyline points="1082,818 1130,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1130,818 1130,802" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1117,802 1143,802" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1122,797 1138,797" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1127,792 1133,792" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="738,358 660,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="660" cy="358" r="5" fill="#8c564b"/>
+<polyline points="660,248 660,283.0" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="660,323.0 660,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="651" y="283.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="645" y="308.0" font-size="13" text-anchor="end" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="660,248 660,234" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="633.0" y="208" width="54" height="26" rx="5" fill="#8c564b" stroke="#8c564b" stroke-width="1"/>
+<text x="660" y="226" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">VBAT</text>
+<polyline points="660,358 660,393.0" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="660,433.0 660,468" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="651" y="393.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="675" y="418.0" font-size="13" text-anchor="start" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="660,468 660,484" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="647,484 673,484" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="652,489 668,489" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="657,494 663,494" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="660,358 600,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="600,358 600,383.0" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="600,393.0 600,418" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="586,383.0 614,383.0" fill="none" stroke="#333" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M586,397.0 Q600,389.0 614,397.0" fill="none" stroke="#333" stroke-width="3"/>
+<text x="620" y="393.0" font-size="13" text-anchor="start" font-weight="700" fill="#333"></text>
+<polyline points="600,418 600,434" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="587,434 613,434" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="592,439 608,439" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="597,444 603,444" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="582" y="393" font-size="13" text-anchor="end" font-weight="700" fill="#333">100nF</text>
+<text x="610" y="538" font-size="12" text-anchor="middle" font-weight="700" fill="#8c564b">ตัวแบ่งวัดแบตจาก t10 (ไม่บังคับ)</text>
+<text x="610" y="556" font-size="11" text-anchor="middle" font-weight="400" fill="#555">ถ้าต่อไว้ log จะมี VBAT ต่ำสุดด้วย</text>
+<polyline points="738,818 708,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="708,818 708,834" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="695,834 721,834" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="700,839 716,839" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="705,844 711,844" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="730" y="869" font-size="12" text-anchor="end" font-weight="400" fill="#999" font-style="italic">ไม่ต่อ</text>
+<rect x="40" y="994" width="1620" height="565" rx="8" fill="#fff8e6" stroke="#d9a400" stroke-width="1.5"/>
+<text x="56" y="1020" font-size="15" text-anchor="start" font-weight="700" fill="#5c4400">เช็กลิสต์ทดสอบ</text>
+<text x="56" y="1044" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ต่อสาย</text>
+<text x="56" y="1065" font-size="13" text-anchor="start" font-weight="400" fill="#333">   1) แบต 18650 → TP4056 B+ และ B− (เหมือน t10)</text>
+<text x="56" y="1086" font-size="13" text-anchor="start" font-weight="400" fill="#333">   2) TP4056 OUT+ (VBAT) → LDO VIN</text>
+<text x="56" y="1107" font-size="13" text-anchor="start" font-weight="400" fill="#333">   3) LDO VOUT → ขา 3V3 ของ ESP32</text>
+<text x="56" y="1128" font-size="13" text-anchor="start" font-weight="400" fill="#333">   4) C 10µF และ 100µF คร่อม 3V3 กับ GND วางชิดขา 3V3 (ขาบวกไป 3V3)</text>
+<text x="56" y="1149" font-size="13" text-anchor="start" font-weight="400" fill="#333">   5) TP4056 OUT− กับ LDO GND กับ GND ของ ESP32 ต่อถึงกันทั้งหมด (สัญลักษณ์กราวด์ทุกอันคือจุดเดียวกัน)</text>
+<text x="56" y="1170" font-size="13" text-anchor="start" font-weight="400" fill="#333">   6) ขา VIN ของ ESP32 ไม่ต่อ</text>
+<text x="56" y="1191" font-size="13" text-anchor="start" font-weight="400" fill="#333">   7) ตัวแบ่ง 100k/100k ที่ D34 จาก t10 ค้างไว้ได้ (ไม่บังคับ)</text>
+<text x="56" y="1212" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ขั้นตอนทดสอบ</text>
+<text x="56" y="1233" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 1: ยังไม่ต่อ VOUT เข้า ESP32 วัด LDO VOUT เทียบ GND ด้วยมัลติมิเตอร์ ต้องได้ 3.25–3.35 V</text>
+<text x="56" y="1254" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 2: เสียบ USB อัปโหลด t11 เปิด Serial Monitor 115200 ส่ง c เพื่อล้าง log แล้วถอด USB</text>
+<text x="56" y="1275" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 3: ต่อ VOUT เข้า 3V3 → LED บนบอร์ดกะพริบช้า (1 ครั้งต่อวินาที) ปล่อยไว้ 3–5 นาที</text>
+<text x="56" y="1296" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ระหว่างรอ วัดขา 3V3 ด้วยมัลติมิเตอร์ ต้องไม่ต่ำกว่า 3.2 V</text>
+<text x="56" y="1317" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 4: ถอดสาย VOUT ออกจาก 3V3 ก่อน แล้วค่อยเสียบ USB → Serial พิมพ์ผลของรอบที่รันจาก LDO</text>
+<text x="56" y="1338" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ตัวอย่างผล: รอบก่อนรันได้ 240 s</text>
+<text x="56" y="1359" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ตัวอย่างผล: brownout สะสม = 0</text>
+<text x="56" y="1380" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ตัวอย่างผล: VBAT ต่ำสุดรอบก่อน = 3850 mV</text>
+<text x="56" y="1401" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ผ่าน = brownout เป็น 0 และเวลาที่รันได้ตรงกับเวลาที่ปล่อยไว้</text>
+<text x="56" y="1422" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ข้อควรระวัง</text>
+<text x="56" y="1443" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ห้ามเสียบ USB ขณะ LDO จ่ายเข้า 3V3 (ไฟสองแหล่งชนกันบนราง 3.3 V)</text>
+<text x="56" y="1464" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • LED กะพริบเร็ว (5 ครั้งต่อวินาที) = เคยเกิด brownout ตั้งแต่ล้าง log</text>
+<text x="56" y="1485" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ถ้า brownout: เช็คว่า C 100µF อยู่ชิดขา 3V3 และสายไฟสั้นพอ</text>
+<text x="56" y="1506" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ถ้า brownout: LDO ต้องจ่ายได้อย่างน้อย 500 mA และแบตต้องไม่ใกล้หมด</text>
+<text x="56" y="1527" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ห้ามใช้ AMS1117 เพราะต้องการไฟเข้าอย่างน้อยประมาณ 4.3 V (แบตให้ได้แค่ 3.0–4.2 V)</text>
+<text x="56" y="1548" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ถ้าเป็นชิป AP2112K เปล่า ขา EN ต้องต่อเข้า VIN ไม่อย่างนั้น LDO ไม่จ่ายไฟ</text><metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTowMGI1NzViNi1mNGQyLTQ3ODktYmNmOC04Yjk2YWFkNTQ0NjgAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaBGy1gmwmHnXfi2jOXBQLjAAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDozMjRiNWZmOC1iNzVhLTQ1MjUtYjRmMi0xOTIxYjBmMjdkZDVscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoP+WfbLVjUWM4JVC5gojoswAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggfN+ZleLSBUjz0ERtQqoi3z8YLrlK2SpPe6VIBfdJlM6kZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaMgvj98dM8991eYmNCdinVYAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIEyFqWIPVpQu88Du/1Y2JVy0pFFXFrB+GnMVtj8U+Pu0ZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GWkVZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjAwYjU3NWI2LWY0ZDItNDc4OS1iY2Y4LThiOTZhYWQ1NDQ2OC9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjcxMDg2MmY4LTMxNGMtNDZhNi1iNTBjLTY3MTFiMTdhZDQyMnJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCB835mV4tIFSPPQRG1CqiLfPxguuUrZKk97pUgF90mUzqJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggEcAldszED3rIbJ8i3cNSSngHbVUmAiYtpvWSl5jjZl+iY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggIk+fFHVhcLUWNKFjkDVZn4yXeFYmfDDqCu6PdwCV2YJ0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQCSOegthZWi/ohpKUruhvrqUCAaPI6mNPtS9oYE/4IGmaN+A32P0mlOQ21ALm73ES7f3ji2zFZWkixSx7xsOqyo=</c2pa:manifest></metadata></svg>
