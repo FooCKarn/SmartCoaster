@@ -2,8 +2,8 @@
   "rules": {
     ".read": "auth != null",
     ".write": "auth != null && auth.uid === 'REPLACE_WITH_GATEWAY_UID'",
-    "readings": {
-      ".indexOn": ["ts"]
-    }
+    "readings": { ".indexOn": ["ts"] },
+    "drinks":   { ".indexOn": ["ts"] },
+    "refills":  { ".indexOn": ["ts"] }
   }
 }

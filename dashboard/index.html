@@ -18,12 +18,22 @@
     .card.hi { background: #fff4d6; }
     .card.alert { background: #ffe1e1; }
     table { width: 100%; border-collapse: collapse; }
+    #login { display: none; background: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 2px #0001; }
+    #login input { padding: 6px; margin: 4px 4px 4px 0; max-width: 100%; }
+    #who { font-size: .9em; color: #666; margin-bottom: 8px; }
     td, th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #eee; font-size: .95em; }
   </style>
 </head>
 <body>
   <h2>💧 Smart Coaster</h2>
   <div id="status">กำลังเชื่อมต่อ Firebase…</div>
+  <div id="who"></div>
+  <form id="login">
+    <b>เข้าสู่ระบบ</b> (หลังเปิด rules แบบล็อกอิน, E5)<br>
+    <input id="email" type="email" placeholder="อีเมล" autocomplete="username" required>
+    <input id="pass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" required>
+    <button>เข้าสู่ระบบ</button>
+  </form>
 
   <div class="cards">
     <div class="card hi"><small>ดื่มวันนี้</small><b id="today">–</b></div>
@@ -51,6 +61,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, onValue, query, limitToLast }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const $ = id => document.getElementById(id);
     const status = (msg, err = false) => { $("status").textContent = msg; $("status").className = err ? "err" : ""; };
@@ -65,28 +77,9 @@
       status("ไม่พบ config.js: คัดลอก dashboard/config.example.js เป็น config.js แล้วใส่ค่าของโปรเจกต์", true);
       throw e;
     }
-    const db = getDatabase(initializeApp(firebaseConfig));
-
-    // ---- การ์ดค่าล่าสุด ----
-    onValue(ref(db, "latest"), s => {
-      const v = s.val();
-      if (!v) { status("ยังไม่มีข้อมูลใน /latest (gateway ส่งมาหรือยัง?)"); return; }
-      $("w").textContent    = fmt(v.weight_g, 0, " g");
-      $("d").textContent    = v.dist_cm < 0 ? "no echo" : fmt(v.dist_cm, 0, " cm");
-      $("t").textContent    = fmt(v.room_t, 0, " °C");
-      $("rh").textContent   = fmt(v.room_rh, 0, " %");
-      $("snd").textContent  = fmt(v.sound_p2p, 0, "");
-      $("mot").textContent  = fmt(v.motion_count, 0, "");
-      $("rssi").textContent = fmt(v.rssi, 0, " dBm");
-      $("ts").textContent   = time(v.ts);
-      $("today").textContent = fmt(v.ml_today, 0, " ml");
-      $("since").textContent = typeof v.mins_since_drink === "number" ? v.mins_since_drink.toFixed(0) + " นาทีก่อน" : "–";
-      $("aip").textContent   = typeof v.ai_p === "number" ? (v.ai_p * 100).toFixed(0) + " %" : "–";
-      $("aiCard").className  = "card " + (v.ai_p >= 0.6 ? "alert" : "hi");
-      $("sign").textContent  = v.estop ? "หยุดฉุกเฉิน" : (v.sign_up ? "ยกขึ้น ⬆" : "ลง ⬇");
-      $("signCard").className = "card " + (v.sign_up || v.estop ? "alert" : "hi");
-      status(`node ${v.node_id} · seq ${v.seq}`);
-    }, err => status("อ่าน Firebase ไม่ได้: " + err.message, true));
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
 
     // ---- กราฟย้อนหลัง 100 จุด ----
     const opts = { animation: false, interaction: { mode: "index", intersect: false } };
@@ -107,7 +100,53 @@
       options: opts
     });
 
-    onValue(query(ref(db, "readings"), limitToLast(100)), s => {
+    // ---- ล็อกอิน (E5): rules แบบ test mode ไม่ต้องล็อกอิน, rules แบบล็อกอินจะขึ้นฟอร์มนี้ ----
+    const needLogin = () => { $("login").style.display = "block"; status("ต้องเข้าสู่ระบบก่อน (database rules ไม่อนุญาตให้อ่าน)", true); };
+    $("login").addEventListener("submit", async e => {
+      e.preventDefault();
+      try { await signInWithEmailAndPassword(auth, $("email").value, $("pass").value); }
+      catch (err) { status("เข้าสู่ระบบไม่สำเร็จ: " + err.code, true); }
+    });
+    let unsubs = [];
+    onAuthStateChanged(auth, user => {
+      unsubs.forEach(u => u()); unsubs = [];
+      $("who").textContent = "";
+      if (user) {
+        $("login").style.display = "none";
+        const out = document.createElement("a");
+        out.href = "#"; out.textContent = "ออกจากระบบ";
+        out.onclick = e => { e.preventDefault(); signOut(auth); };
+        $("who").append(`ล็อกอินเป็น ${user.email} · `, out);
+      }
+      listen();
+    });
+    const onErr = err => { if (String(err.code || err.message).includes("permission")) needLogin(); else status("อ่าน Firebase ไม่ได้: " + err.message, true); };
+
+    function listen() {
+
+    // ---- การ์ดค่าล่าสุด ----
+    unsubs.push(onValue(ref(db, "latest"), s => {
+      const v = s.val();
+      if (!v) { status("ยังไม่มีข้อมูลใน /latest (gateway ส่งมาหรือยัง?)"); return; }
+      $("w").textContent    = fmt(v.weight_g, 0, " g");
+      $("d").textContent    = v.dist_cm < 0 ? "no echo" : fmt(v.dist_cm, 0, " cm");
+      $("t").textContent    = fmt(v.room_t, 0, " °C");
+      $("rh").textContent   = fmt(v.room_rh, 0, " %");
+      $("snd").textContent  = fmt(v.sound_p2p, 0, "");
+      $("mot").textContent  = fmt(v.motion_count, 0, "");
+      $("rssi").textContent = fmt(v.rssi, 0, " dBm");
+      $("ts").textContent   = time(v.ts);
+      $("today").textContent = fmt(v.ml_today, 0, " ml");
+      $("since").textContent = typeof v.mins_since_drink === "number" ? v.mins_since_drink.toFixed(0) + " นาทีก่อน" : "–";
+      $("aip").textContent   = typeof v.ai_p === "number" ? (v.ai_p * 100).toFixed(0) + " %" : "–";
+      $("aiCard").className  = "card " + (v.ai_p >= 0.6 ? "alert" : "hi");
+      $("sign").textContent  = v.estop ? "หยุดฉุกเฉิน" : (v.sign_up ? "ยกขึ้น ⬆" : "ลง ⬇");
+      $("signCard").className = "card " + (v.sign_up || v.estop ? "alert" : "hi");
+      status(`node ${v.node_id} · seq ${v.seq}`);
+    }, onErr));
+
+    // ---- กราฟย้อนหลัง 100 จุด ----
+    unsubs.push(onValue(query(ref(db, "readings"), limitToLast(100)), s => {
       const rows = Object.values(s.val() || {});
       const labels = rows.map(r => time(r.ts));
       chartW.data.labels = labels;
@@ -118,15 +157,16 @@
       chartRoom.data.datasets[0].data = rows.map(r => r.room_t);
       chartRoom.data.datasets[1].data = rows.map(r => r.room_rh);
       chartRoom.update();
-    });
+    }, onErr));
 
     // ---- ตารางการดื่ม 10 ครั้งล่าสุด ----
-    onValue(query(ref(db, "drinks"), limitToLast(10)), s => {
+    unsubs.push(onValue(query(ref(db, "drinks"), limitToLast(10)), s => {
       const rows = Object.values(s.val() || {}).reverse();
       $("drinks").innerHTML = rows.length
         ? rows.map(r => `<tr><td>${time(r.ts)}</td><td>${fmt(r.ml, 0, " ml")}</td><td>${fmt(r.ml_today, 0, " ml")}</td></tr>`).join("")
         : `<tr><td colspan="3">ยังไม่มีการดื่ม</td></tr>`;
-    });
+    }, onErr));
+    }  // end listen()
   </script>
 </body>
 </html>

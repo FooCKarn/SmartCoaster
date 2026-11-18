@@ -1,4 +1,4 @@
-// gateway/gateway.ino — FreeRTOS version (E1) + ACK/offline queue (E4)
+// gateway/gateway.ino — FreeRTOS (E1) + ACK/offline queue (E4) + TLS root CA / Firebase Auth (E5)
 //
 //  ESP-NOW callback ──rxQueue──▶ nodeTask ──uploadQueue──▶ netTask ──HTTPS──▶ Firebase
 //        ▲  ACK ◀──────────────────┘   │ ตรวจการดื่ม                   │ เน็ตล่ม → flash (LittleFS)
@@ -15,6 +15,7 @@
 #include <time.h>
 #include "msg.h"
 #include "secrets.h"
+#include "root_ca.h"        // ต้องมาก่อน line_push.h / cloud.h (E5)
 #include "line_push.h"
 #include "cloud.h"
 #include "drink_detect.h"

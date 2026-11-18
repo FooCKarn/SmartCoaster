@@ -7,6 +7,12 @@
 #include <LittleFS.h>
 #include <sys/time.h>
 #include "secrets.h"
+#include "root_ca.h"
+#include "firebase_auth.h"
+
+#ifndef DB_AUTH
+#define DB_AUTH ""        // แบบเก่า (database secret) ไม่แนะนำ ใช้ FB_EMAIL/FB_PASSWORD แทน
+#endif
 
 // ---------------- เวลา (NTP) ----------------
 inline bool timeValid() { return time(nullptr) > 1700000000; }   // ได้เวลาจริงจาก NTP แล้ว
@@ -30,7 +36,11 @@ HTTPClient fbHttp;
 uint32_t fbOk = 0, fbFail = 0;
 
 void cloudBegin() {
-  fbClient.setInsecure();   // ยังไม่ตรวจ cert (E5 จะเปลี่ยน)
+  secureClient(fbClient);   // E5: ตรวจ cert ด้วย root CA (root_ca.h)
+#ifndef SC_ROOT_CA
+  Serial.println("[CLOUD] ⚠️ USE_ROOT_CA = 0 → ไม่ตรวจ certificate");
+#endif
+  if (!fbAuthEnabled()) Serial.println("[CLOUD] ⚠️ ไม่ได้ตั้ง FB_EMAIL → ไม่ล็อกอิน (ใช้ได้กับ rules test mode เท่านั้น)");
   fbHttp.setReuse(true);    // keep-alive: ไม่ต้อง handshake TLS ใหม่ทุกครั้ง เร็วขึ้นมาก
   fbHttp.setConnectTimeout(8000);
   fbHttp.setTimeout(8000);
@@ -38,11 +48,19 @@ void cloudBegin() {
 
 int fbRequest(const char *method, const String &path, const String &body) {
   if (WiFi.status() != WL_CONNECTED) return -1;
-  String auth = String(DB_AUTH).length() ? String("?auth=") + DB_AUTH : "";
+  String auth;
+  if (fbAuthEnabled()) {
+    String tok = fbToken();
+    if (!tok.length()) return -3;          // ล็อกอินไม่ได้ (รหัสผิด / API key ผิด) เก็บลง flash ไว้ก่อน
+    auth = "?auth=" + tok;
+  } else if (strlen(DB_AUTH)) {
+    auth = String("?auth=") + DB_AUTH;
+  }
   if (!fbHttp.begin(fbClient, String(DB_URL) + path + ".json" + auth)) return -2;
   fbHttp.addHeader("Content-Type", "application/json");
   int code = fbHttp.sendRequest(method, body);
   fbHttp.end();
+  if (code == 401 && fbAuthEnabled()) fbTokenRejected();
   if (code != 200) {
     fbClient.stop();        // เริ่ม connection ใหม่รอบหน้า
     fbFail++;

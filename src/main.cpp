@@ -40,6 +40,10 @@
 #include "../tests/t08_hx711_weigh/t08_hx711_weigh.ino"
 #elif defined(SC_SKETCH_T10_LINE)
 #include "../tests/t10_line/t10_line.ino"
+#elif defined(SC_SKETCH_T12_TLS)
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include "../tests/t12_tls/t12_tls.ino"
 #else
 #error "Select a sketch using a PlatformIO environment in platformio.ini"
 #endif

@@ -9,7 +9,11 @@ inline int lineSend(const char* url, const char* token, const String& body,
                     String* resp = nullptr) {
   if (WiFi.status() != WL_CONNECTED) return -1;
   WiFiClientSecure client;
-  client.setInsecure();  // development only
+#ifdef SC_ROOT_CA
+  client.setCACert(SC_ROOT_CA);   // E5: ตรวจ cert (gateway/root_ca.h)
+#else
+  client.setInsecure();           // development only
+#endif
   HTTPClient http;
   http.setConnectTimeout(8000);
   http.setTimeout(8000);
@@ -52,7 +56,11 @@ inline int lineConsumption(const char* token) {
   if (WiFi.status() != WL_CONNECTED) return -1;
 
   WiFiClientSecure client;
+#ifdef SC_ROOT_CA
+  client.setCACert(SC_ROOT_CA);
+#else
   client.setInsecure();  // development only
+#endif
 
   HTTPClient http;
   http.setConnectTimeout(8000);
