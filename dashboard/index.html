@@ -1,102 +1,219 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smart Coaster</title>
+  <title>Smart Coaster · Daily Hydration Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 16px; background: #f6f7f9; color: #222; }
-    h2 { margin: 0 0 4px; }
-    #status { font-size: .9em; color: #666; margin-bottom: 12px; }
-    #status.err { color: #c0392b; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-    .card { background: #fff; border-radius: 10px; padding: 12px 16px; box-shadow: 0 1px 2px #0001; }
-    .card small { color: #666; }
-    .card b { display: block; font-size: 1.6em; margin-top: 4px; }
-    .chart-box { background: #fff; border-radius: 10px; padding: 12px; margin-top: 16px; box-shadow: 0 1px 2px #0001; }
-  </style>
 </head>
-<body>
-  <h2>💧 Smart Coaster</h2>
-  <div id="status">กำลังเชื่อมต่อ Firebase…</div>
+<body data-page="dashboard">
 
-  <div class="cards">
-    <div class="card"><small>น้ำหนักแก้ว</small><b id="w">–</b></div>
-    <div class="card"><small>ระยะ (ultrasonic)</small><b id="d">–</b></div>
-    <div class="card"><small>อุณหภูมิห้อง</small><b id="t">–</b></div>
-    <div class="card"><small>ความชื้น</small><b id="rh">–</b></div>
-    <div class="card"><small>เสียงห้อง (p2p)</small><b id="snd">–</b></div>
-    <div class="card"><small>PIR (นับการขยับ)</small><b id="mot">–</b></div>
-    <div class="card"><small>สัญญาณ node (RSSI)</small><b id="rssi">–</b></div>
-    <div class="card"><small>อัปเดตล่าสุด</small><b id="ts" style="font-size:1em">–</b></div>
+<header class="topbar">
+  <div class="brand-group">
+    <div class="brand-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 2.5s6.5 6.6 6.5 11.4a6.5 6.5 0 0 1-13 0C5.5 9.100 12 2.500 12 2.500z"/></svg>
+    </div>
+    <div>
+      <div class="brand-title">Smart Coaster <span class="badge-edge">Edge AI</span></div>
+      <div class="brand-sub">A smart coaster to help you stay hydrated throughout the day</div>
+    </div>
   </div>
 
-  <div class="chart-box"><canvas id="chartW" height="110"></canvas></div>
-  <div class="chart-box"><canvas id="chartRoom" height="90"></canvas></div>
+  <div class="controls">
+    <div class="node-pill" title="Connected device">
+      <span class="select-label">Device</span>
+      <span class="mono node-name">coaster-01</span>
+    </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, onValue, query, limitToLast }
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    <nav class="nav-tabs" aria-label="Main menu">
+      <a href="./index.html" class="nav-btn active" aria-current="page">Hydration</a>
+      <a href="./sensors.html" class="nav-btn">Sensors &amp; System</a>
+    </nav>
+  </div>
+</header>
 
-    const $ = id => document.getElementById(id);
-    const status = (msg, err = false) => { $("status").textContent = msg; $("status").className = err ? "err" : ""; };
-    const fmt = (v, digits, unit) => (typeof v === "number" && isFinite(v)) ? v.toFixed(digits) + unit : "–";
-    const time = ms => ms ? new Date(ms).toLocaleTimeString("th-TH") : "–";
+<main class="container">
+  <h1 class="sr-only">Smart Coaster Dashboard</h1>
 
-    // config.js ไม่อยู่ใน git: คัดลอกจาก config.example.js
-    let firebaseConfig;
-    try {
-      ({ firebaseConfig } = await import("./config.js"));
-    } catch (e) {
-      status("ไม่พบ config.js: คัดลอก dashboard/config.example.js เป็น config.js แล้วใส่ค่าของโปรเจกต์", true);
-      throw e;
+  <div class="telemetry-bar">
+    <div class="telemetry-left">
+      <span class="pulse-dot" id="connDot"></span>
+      <span id="status">MOCK DATA MODE · coaster-01</span>
+    </div>
+    <div class="telemetry-right mono">
+      <span id="seqBadge">SEQ #1532</span>
+      <span class="sep">|</span>
+      <span id="lastUpdate">UPDATED: --:--:--</span>
+    </div>
+  </div>
+
+  <section class="hero-grid">
+    <!-- Hydration progress -->
+    <div class="card hero-hydration">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Today's Water Intake</h2>
+          <p class="card-desc">Counted when a drink is detected (weight decreases by more than 20 g)</p>
+        </div>
+        <span class="pill pill-blue mono" id="hourlyRateBadge">168 ml/hr</span>
+      </div>
+
+      <div class="hydration-visual">
+        <div class="glass-container">
+          <div class="glass-ticks" aria-hidden="true">
+            <span class="t4">2.0L</span>
+            <span class="t3">1.5L</span>
+            <span class="t2">1.0L</span>
+            <span class="t1">0.5L</span>
+          </div>
+          <div class="glass" role="img" aria-label="Water intake compared with your daily goal">
+            <i></i><i></i><i></i>
+            <div class="water" id="waterLevel" style="height: 67.5%;"></div>
+          </div>
+        </div>
+
+        <div class="hydration-metrics">
+          <div class="goal-block">
+            <span class="metric-label goal-label">Daily Goal Progress</span>
+            <div class="metric-big mono" id="pctText">67.5%</div>
+            <div class="metric-sub mono" id="mlText">1,350 / 2,000 ml</div>
+            <p class="remain-note" id="remainText">650 ml remaining to reach your goal</p>
+          </div>
+
+          <div class="metric-footer">
+            <div class="divider-h"></div>
+            <div class="metric-row">
+              <div>
+                <span class="metric-label">Last Drink</span>
+                <div class="metric-val mono" id="lastSipTime">14:20</div>
+              </div>
+              <div>
+                <span class="metric-label">Amount</span>
+                <div class="metric-val mono text-sky" id="lastSipMl">+45 ml</div>
+              </div>
+              <div>
+                <span class="metric-label">Coaster Weight</span>
+                <div class="metric-val mono" id="currentWeight">312.4 g</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Automatic Alert Status -->
+    <div class="card hero-ai">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Automatic Alert Status</h2>
+          <p class="card-desc legend">
+            <span class="lg-green">Normal</span>
+            <span class="lg-amber">Monitor</span>
+            <span class="lg-red">At Risk / Away</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="ai-list">
+        <!-- 1. Hydration Risk -->
+        <div class="ai-item" id="aiCard">
+          <div class="ai-circle bg-yellow" id="aiIconBox" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3s6 6.2 6 10.5A6 6 0 0 1 6 13.5C6 9.2 12 3 12 3z"/></svg>
+          </div>
+          <div class="ai-body">
+            <div class="ai-top-row">
+              <span class="ai-kicker">Hydration Risk</span>
+              <span class="ai-meta mono" id="aiRightBadge">
+                <i class="status-dot dot-yellow" id="aiDot"></i>
+                <span id="aiScore">MODERATE</span>
+              </span>
+            </div>
+            <div class="ai-heading" id="aiStatusText">Drinking less water than usual</div>
+            <div class="ai-detail" id="aiSubText">Room temperature 30°C · Humidity 67%</div>
+          </div>
+        </div>
+
+        <!-- 2. Desk Presence -->
+        <div class="ai-item" id="deskCard">
+          <div class="ai-circle bg-green" id="deskIconBox" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.6-3.6 3.2-5.6 6.5-5.6s5.9 2 6.5 5.6"/></svg>
+          </div>
+          <div class="ai-body">
+            <div class="ai-top-row">
+              <span class="ai-kicker">Desk Presence</span>
+              <span class="ai-meta mono">
+                <i class="status-dot dot-green" id="deskDot"></i>
+                <span id="presenceCode">PIR + HC-SR04</span>
+              </span>
+            </div>
+            <div class="ai-heading" id="deskStatusText">At desk (alerts enabled)</div>
+            <div class="ai-detail" id="deskSubText">Distance 20 cm · Room is quiet</div>
+          </div>
+        </div>
+
+        <!-- 3. Notifications -->
+        <div class="ai-item" id="alertCard">
+          <div class="ai-circle bg-green" id="alertIconBox" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+          </div>
+          <div class="ai-body">
+            <div class="ai-top-row">
+              <span class="ai-kicker">Notifications</span>
+              <span class="ai-meta mono">
+                <i class="status-dot dot-green" id="alertDot"></i>
+                <span id="alertCode">SG90 + LINE</span>
+              </span>
+            </div>
+            <div class="ai-heading" id="alertStatusText">System ready (alerts enabled)</div>
+            <div class="ai-detail" id="alertSubText">SG90: Retracted | LINE: Sent if the flag stays raised for 15 minutes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bottom-grid">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Last 7 Days</h3>
+          <p class="card-desc">Daily water intake (ml) over the previous 7 days · dashed line = daily goal</p>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="hb" id="weekBars" role="img" aria-label="Daily water intake for the previous 7 days"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Recent Drinks</h3>
+          <p class="card-desc">Automatically detected when you lift the cup to drink</p>
+        </div>
+      </div>
+      <ul class="sip-list" id="sipLogList"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  Daily goal: 2,000 ml · This information is for basic hydration tracking and is not medical advice.
+</footer>
+
+<script>
+  // If app.js never ran (e.g. opened as file://), say so instead of staying silent.
+  window.addEventListener("load", function () {
+    var s = document.getElementById("status");
+    if (s && s.textContent.trim() === "MOCK DATA MODE · coaster-01") {
+      s.textContent = "app.js did not run · open via http://localhost:8000 (python -m http.server 8000) and check the Console (F12)";
     }
-    const db = getDatabase(initializeApp(firebaseConfig));
-
-    // ---- การ์ดค่าล่าสุด ----
-    onValue(ref(db, "latest"), s => {
-      const v = s.val();
-      if (!v) { status("ยังไม่มีข้อมูลใน /latest (gateway ส่งมาหรือยัง?)"); return; }
-      $("w").textContent    = fmt(v.weight_g, 0, " g");
-      $("d").textContent    = v.dist_cm < 0 ? "no echo" : fmt(v.dist_cm, 0, " cm");
-      $("t").textContent    = fmt(v.room_t, 0, " °C");
-      $("rh").textContent   = fmt(v.room_rh, 0, " %");
-      $("snd").textContent  = fmt(v.sound_p2p, 0, "");
-      $("mot").textContent  = fmt(v.motion_count, 0, "");
-      $("rssi").textContent = fmt(v.rssi, 0, " dBm");
-      $("ts").textContent   = time(v.ts);
-      status(`node ${v.node_id} · seq ${v.seq}`);
-    }, err => status("อ่าน Firebase ไม่ได้: " + err.message, true));
-
-    // ---- กราฟย้อนหลัง 100 จุด ----
-    const opts = { animation: false, interaction: { mode: "index", intersect: false } };
-    const chartW = new Chart($("chartW"), {
-      type: "line",
-      data: { labels: [], datasets: [{ label: "น้ำหนักบนแท่น (g)", data: [], tension: 0.2 }] },
-      options: opts
-    });
-    const chartRoom = new Chart($("chartRoom"), {
-      type: "line",
-      data: { labels: [], datasets: [
-        { label: "อุณหภูมิ (°C)", data: [], tension: 0.2 },
-        { label: "ความชื้น (%)",  data: [], tension: 0.2 }
-      ] },
-      options: opts
-    });
-
-    onValue(query(ref(db, "readings"), limitToLast(100)), s => {
-      const rows = Object.values(s.val() || {});
-      const labels = rows.map(r => time(r.ts));
-      chartW.data.labels = labels;
-      chartW.data.datasets[0].data = rows.map(r => r.weight_g);
-      chartW.update();
-      chartRoom.data.labels = labels;
-      chartRoom.data.datasets[0].data = rows.map(r => r.room_t);
-      chartRoom.data.datasets[1].data = rows.map(r => r.room_rh);
-      chartRoom.update();
-    });
-  </script>
+  });
+</script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
