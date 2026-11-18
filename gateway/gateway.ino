@@ -198,7 +198,14 @@ void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
     S.holdUntilMs = millis() + scaledMinToMs(HOLD_DOWN_MIN);
     setSignLocked(false, "ดื่มแล้ว");
   }
-  Serial.printf("[DRINK] %s %.0f g (วันนี้ %.0f ml)\n", drinkEventName(ev), amount, S.mlToday);
+  switch (ev) {
+    case EV_DRINK:       Serial.printf("[DRINK] ดื่ม %.0f ml  (วันนี้ %.0f ml)\n", amount, S.mlToday); break;
+    case EV_REFILL:      Serial.printf("[DRINK] เติมน้ำ +%.0f g\n", amount); break;
+    case EV_CUP_PLACED:  Serial.printf("[DRINK] วางแก้ว w=%.0f g (รอนิ่ง ~10 วิ แล้วค่อยเทียบ)\n", m.weight_g); break;
+    case EV_CUP_LIFTED:  Serial.println("[DRINK] ยกแก้วขึ้น (ยังไม่นับ รอวางกลับ)"); break;
+    case EV_CUP_CHANGED: Serial.printf("[DRINK] เปลี่ยนแก้ว จำน้ำหนักใหม่ %.0f g\n", S.drink.refWeight()); break;
+    default: break;
+  }
 }
 
 void nodeTask(void *) {
@@ -217,8 +224,11 @@ void nodeTask(void *) {
       Lock l;
       S.rxCount++;
       S.lastDistCm = m.dist_cm;
+      float refBefore = S.drink.refWeight();
       ev = S.drink.update(m.weight_g, &amount);
       if (ev != EV_NONE) handleDrinkLocked(m, ev, amount);
+      if (isnan(refBefore) && !isnan(S.drink.refWeight()))
+        Serial.printf("[DRINK] จำน้ำหนักแก้วแรก %.0f g (ดื่มแล้ววางกลับ ลดลง ≥ 15 g จะนับ)\n", S.drink.refWeight());
 
       rec["node_id"]   = m.node_id;
       rec["seq"]       = m.seq;
@@ -300,7 +310,8 @@ void sensorTask(void *) {
 // ลำดับต้องตรงกับ FEATURES ใน ai/train.py
 void computeFeaturesLocked(float *x) {
   bool pir  = lastMotionMs != 0 && millis() - lastMotionMs < PIR_WINDOW_MS;
-  bool near = S.lastDistCm > 0 && S.lastDistCm < PRESENCE_CM;
+  // < 5 cm = ค่าผิด (HC-SR04 วัดใกล้กว่า ~2–4 cm ไม่ได้ มักเป็นเสียงสะท้อนผนังกล่อง) ไม่นับว่ามีคน
+  bool near = S.lastDistCm >= 5 && S.lastDistCm < PRESENCE_CM;
   x[0] = min(minsSince(S.lastDrinkMs), 240.0f);
   x[1] = mlLastHourLocked();
   x[2] = S.mlToday;
