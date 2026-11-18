@@ -9,9 +9,10 @@ gateway: it receives those measurements, reads conditions in the room, and
 sends the collected data to Firebase. A web dashboard displays the latest
 measurements and recent history.
 
-The gateway also has a servo intended to lift a reminder sign. Automatic drink
-detection and reminder decisions are planned work; they are not yet implemented
-in the current firmware.
+The gateway also detects drinks from the weight changes, runs a small
+logistic-regression model that estimates the risk of under-drinking, lifts a
+reminder sign with a servo, and sends a LINE alert when the sign is ignored.
+See `docs/ai-and-drinks.md`.
 
 ## How data moves through the system
 
@@ -27,7 +28,7 @@ Room sensors ───────> Gateway ESP32 ──Wi-Fi/HTTPS──> Fireb
                                                    Web dashboard
 
 Gateway ESP32 ──> Servo and reminder sign
-                  (hardware is present; automatic reminder logic is planned)
+                  (raised by the AI model, lowered after a detected drink)
 ```
 
 The node sends a measurement packet about every five seconds. The gateway
@@ -78,9 +79,9 @@ The gateway is the ESP32 connected to the room sensors and sign hardware. It:
    room-sensor values to a Firebase record.
 6. Tries to reconnect to Wi-Fi if the connection is lost.
 
-The servo output is initialized, and the emergency-stop button disables servo
-pulses when pressed. The current firmware does not yet decide when a reminder
-should be shown or move the servo based on drinking behavior.
+The AI task raises the sign when the predicted risk is high and lowers it after
+a drink. The emergency-stop button disables servo pulses until `c` is typed in
+the Serial Monitor.
 
 ### Sensors and outputs at a glance
 
@@ -91,7 +92,7 @@ should be shown or move the servo based on drinking behavior.
 | DHT11 | Gateway | Room temperature in °C and relative humidity in percent. |
 | KY-038 sound sensor | Gateway | Relative analog peak-to-peak reading, not calibrated dB. |
 | HC-SR501 PIR | Gateway | Cumulative count of detected motion events since startup. |
-| SG90 servo | Gateway | Intended to raise/lower a physical reminder sign; automatic control is planned. |
+| SG90 servo | Gateway | Raises/lowers the reminder sign, driven by the AI decision. |
 | Emergency-stop button | Gateway | Stops servo pulses after the button is pressed; a restart/reset is needed to clear the current firmware's stop state. |
 | Battery divider | Node hardware plan | Intended to measure battery voltage; the present node sketch does not read it. |
 
@@ -360,8 +361,11 @@ This sequence helps isolate hardware, radio, cloud, and dashboard problems:
 ## Current implementation versus planned work
 
 The current firmware implements coaster weight/distance readings, ESP-NOW
-communication, gateway room sensing, Firebase uploads, dashboard
-visualization, and a manual LINE broadcast test. Automatic drink detection and
-reminder decisions remain planned work, as do FreeRTOS tasks, node deep sleep,
-and packet acknowledgements/queuing. Battery measurement is also not populated
-by the current node firmware (`batt_mv` is sent as `0`).
+communication with application-level ACKs and a node retry queue, gateway room
+sensing, FreeRTOS tasks and queues on the gateway, drink detection, the AI sign
+decision, automatic LINE alerts, Firebase uploads with an offline flash queue,
+certificate verification, Firebase Auth, and the dashboard. Node deep sleep and
+battery measurement (`batt_mv` is sent as `0`) remain planned work.
+
+Note: sections above that describe the packet layout and the single-loop
+gateway predate message format v2 (`common/msg.h`) and the FreeRTOS gateway.

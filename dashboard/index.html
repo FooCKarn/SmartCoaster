@@ -48,8 +48,17 @@
       <span id="seqBadge">SEQ #1532</span>
       <span class="sep">|</span>
       <span id="lastUpdate">UPDATED: --:--:--</span>
+      <span id="who" hidden><span class="sep">|</span><span id="whoEmail"></span> <a href="#" id="logout">Sign out</a></span>
     </div>
   </div>
+
+  <form id="login" class="card login-card" hidden>
+    <strong>Sign in</strong>
+    <span class="login-note">The database rules require a login (E5)</span>
+    <input id="email" type="email" placeholder="Email" autocomplete="username" required>
+    <input id="pass" type="password" placeholder="Password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+  </form>
 
   <section class="hero-grid">
     <!-- Hydration progress -->

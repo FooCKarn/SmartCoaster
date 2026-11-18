@@ -1,12 +1,3 @@
-/* ============================================================================
- * [FUTURE: FIREBASE IMPORTS]
- * เมื่อพร้อมเชื่อมต่อ Firebase จริง ให้เอา Comment /* ... * / ออก แล้วสร้างไฟล์ config.js
- * ============================================================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { firebaseConfig } from "./config.js";
-*/
-
 const $ = (id) => document.getElementById(id);
 const currentPage = document.body.dataset.page; // "dashboard" หรือ "sensors"
 const GOAL_ML = 2000;
@@ -182,13 +173,9 @@ function renderDashboardPage(v) {
   $("hourlyRateBadge").textContent = `${v.hourly_rate ?? 150} ml/hr`;
   $("currentWeight").textContent = `${Number(v.weight_g).toFixed(1)} g`;
 
-  if (v.last_sip_ts) {
-    $("lastSipTime").textContent =
-      new Date(v.last_sip_ts).toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-  }
+  $("lastSipTime").textContent = v.last_sip_ts
+    ? new Date(v.last_sip_ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    : "–";
   $("lastSipMl").textContent = v.last_sip_ml ? `+${v.last_sip_ml} ml` : "–";
 
   // --------------------------------------------------------------------------
@@ -208,6 +195,7 @@ function renderDashboardPage(v) {
     $("aiScore").textContent = "HIGH RISK";
     $("aiStatusText").textContent = "High dehydration risk (drink now)";
   }
+  if (typeof v.ai_p === "number") $("aiScore").textContent += ` (${Math.round(v.ai_p * 100)}%)`;
   $("aiSubText").textContent = `Room temperature ${Math.round(v.room_t)}°C · Humidity ${Math.round(v.room_rh)}%`;
 
   // --------------------------------------------------------------------------
@@ -233,14 +221,18 @@ function renderDashboardPage(v) {
   // Row 3: Notifications (เขียว = ปกติ, เหลือง = ยกป้ายเตือน, แดง = ส่ง LINE แล้ว)
   // --------------------------------------------------------------------------
   const alertState = v.alert_state || (v.servo_up ? "servo_up" : "idle");
-  if (alertState === "idle") {
+  if (alertState === "estop") {
+    setStatusRow("alertIconBox", "alertDot", "red");
+    $("alertStatusText").textContent = "Emergency stop pressed (sign disabled)";
+    $("alertSubText").textContent = "SG90: Off | Type c in the gateway Serial Monitor to release";
+  } else if (alertState === "idle") {
     setStatusRow("alertIconBox", "alertDot", "green");
     $("alertStatusText").textContent = "System ready (alerts enabled)";
-    $("alertSubText").textContent = "SG90: Retracted | LINE: Sent if the flag stays raised for 15 minutes";
+    $("alertSubText").textContent = "SG90: Retracted | LINE: Sent if the flag stays raised for 10 minutes";
   } else if (alertState === "servo_up") {
     setStatusRow("alertIconBox", "alertDot", "yellow");
     $("alertStatusText").textContent = "Reminder flag raised (waiting for sip)";
-    $("alertSubText").textContent = "SG90: Raised | LINE: Will send if unheeded for 15 minutes";
+    $("alertSubText").textContent = "SG90: Raised | LINE: Will send if unheeded for 10 minutes";
   } else {
     setStatusRow("alertIconBox", "alertDot", "red");
     $("alertStatusText").textContent = "LINE alert sent (30m cooldown)";
@@ -349,65 +341,142 @@ function updateAll(v, historyRows = []) {
 }
 
 // ============================================================================
-// 4. RUN MOCK MODE (ใช้งานอยู่ปัจจุบัน)
+// 4. DATA SOURCE: Firebase จริง (ถ้าไม่มี config.js จะแสดง MOCK_DATA แทน)
 // ============================================================================
-$("status").textContent = `MOCK DATA MODE · ${MOCK_DATA.node_id.toUpperCase()} (ESP-NOW)`;
-updateAll(MOCK_DATA, MOCK_DATA.history);
+const FB_SDK = "https://www.gstatic.com/firebasejs/10.12.2";
+const AI_P_UP = 0.70;   // ตรงกับ gateway/gateway.ino: ความเสี่ยง ≥ ค่านี้ → ยกป้าย
+const AI_P_DOWN = 0.62; // ตรงกับ gateway/gateway.ino: ความเสี่ยง ≤ ค่านี้ → ลดป้าย
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-/* ============================================================================
- * 5. [FUTURE: FIREBASE REALTIME CONNECTION]
- * เมื่อฝั่ง Gateway ส่งข้อมูลขึ้น Firebase และสร้างไฟล์ dashboard/config.js แล้ว
- * ให้ลบส่วนที่ 4 (RUN MOCK MODE) ด้านบนออก แล้วเปิดใช้งานโค้ดด้านล่างนี้แทน
- * ============================================================================
+const clock = (ts, withSec = false) =>
+  new Date(ts).toLocaleTimeString("en-GB", withSec
+    ? { hour: "2-digit", minute: "2-digit", second: "2-digit" }
+    : { hour: "2-digit", minute: "2-digit" });
+const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const sumMl = (rows) => Math.round(rows.reduce((s, d) => s + (d.ml || 0), 0));
 
-const db = getDatabase(initializeApp(firebaseConfig));
-$("connDot").classList.add("online");
+function runMock(reason) {
+  $("status").textContent = `MOCK DATA MODE (${reason})`;
+  updateAll(MOCK_DATA, MOCK_DATA.history);
+}
 
-// 1) ดึงค่าล่าสุดจาก /latest
-onValue(
-  ref(db, "latest"),
-  (snapshot) => {
-    const v = snapshot.val();
-    if (!v) {
-      $("status").textContent = "CONNECTED · WAITING FOR /latest DATA";
-      return;
-    }
-    $("status").textContent = `LIVE FIREBASE · NODE ${v.node_id || "coaster-01"}`;
-    updateAll(v);
-  },
-  (err) => {
-    $("connDot").classList.remove("online");
-    $("status").textContent = "FIREBASE ERROR: " + err.message;
+// แปลง /latest และ /drinks ที่ gateway ส่งจริง ให้เป็นรูปแบบที่หน้าเว็บใช้ (ดู dashboard_documentation.md ข้อ 4)
+function toView(latest, drinks) {
+  const now = Date.now();
+  const today0 = startOfDay(now);
+  const last = drinks.length ? drinks[drinks.length - 1] : null;
+  const week = [];
+  for (let i = 7; i >= 1; i--) {
+    const from = today0 - i * DAY_MS;
+    week.push(sumMl(drinks.filter((d) => d.ts >= from && d.ts < from + DAY_MS)));
   }
-);
+  const p = latest.ai_p;
+  return {
+    ...latest,
+    daily_ml: Math.round(latest.ml_today ?? 0),
+    hourly_rate: sumMl(drinks.filter((d) => d.ts >= now - 60 * 60 * 1000)),
+    last_sip_ts: last ? last.ts : null,
+    last_sip_ml: last ? Math.round(last.ml) : null,
+    ai_risk: typeof p !== "number" ? null : p >= AI_P_UP ? "high" : p > AI_P_DOWN ? "moderate" : "normal",
+    alert_state: latest.estop ? "estop" : latest.sign_up ? "servo_up" : "idle",
+    week_ml: drinks.length ? week : [],
+    sips: drinks.slice(-6).reverse().map((d) => ({
+      time: clock(d.ts),
+      ml: Math.round(d.ml),
+      note: `Today ${Math.round(d.ml_today ?? 0).toLocaleString()} ml`,
+    })),
+  };
+}
 
-// 2) ดึงข้อมูลกราฟย้อนหลัง 30 จุด (ทำงานเฉพาะหน้า sensors.html)
-if (currentPage === "sensors") {
-  onValue(query(ref(db, "readings"), limitToLast(30)), (snapshot) => {
-    const rows = Object.values(snapshot.val() || {});
-    const formatted = rows.map((r) => ({
-      time: new Date(r.ts).toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-      weight_g: r.weight_g,
-      temp: r.room_t,
-      rh: r.room_rh,
-    }));
-    if (formatted.length) {
-      if (chartW) {
-        chartW.data.labels = formatted.map((r) => r.time);
-        chartW.data.datasets[0].data = formatted.map((r) => r.weight_g);
-        chartW.update();
+async function startLive() {
+  $("status").textContent = "CONNECTING TO FIREBASE...";
+  let firebaseConfig;
+  try {
+    ({ firebaseConfig } = await import("./config.js"));
+  } catch (e) {
+    runMock("no config.js: copy config.example.js to config.js");
+    return;
+  }
+
+  const [{ initializeApp }, fdb, fauth] = await Promise.all([
+    import(`${FB_SDK}/firebase-app.js`),
+    import(`${FB_SDK}/firebase-database.js`),
+    import(`${FB_SDK}/firebase-auth.js`),
+  ]);
+  const { getDatabase, ref, onValue, query, orderByChild, startAt, limitToLast } = fdb;
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } = fauth;
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+
+  let latest = null;
+  let drinks = [];
+  let history = [];
+  let unsubs = [];
+  const render = () => { if (latest) updateAll(toView(latest, drinks), history); };
+
+  // อ่านไม่ได้เพราะ rules แบบล็อกอิน (E5) → แสดงฟอร์มล็อกอิน
+  const onErr = (err) => {
+    $("connDot").classList.remove("online");
+    if (String(err.code || err.message).toLowerCase().includes("permission")) {
+      $("login").hidden = false;
+      $("status").textContent = "LOGIN REQUIRED (database rules)";
+    } else {
+      $("status").textContent = "FIREBASE ERROR: " + err.message;
+    }
+  };
+
+  $("login").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, $("email").value, $("pass").value);
+    } catch (err) {
+      $("status").textContent = "LOGIN FAILED: " + err.code;
+    }
+  });
+  $("logout").addEventListener("click", (e) => { e.preventDefault(); signOut(auth); });
+
+  onAuthStateChanged(auth, (user) => {
+    unsubs.forEach((u) => u());
+    unsubs = [];
+    $("login").hidden = true;
+    $("who").hidden = !user;
+    $("whoEmail").textContent = user ? user.email : "";
+
+    // 1) ค่าล่าสุดจาก /latest
+    unsubs.push(onValue(ref(db, "latest"), (snap) => {
+      latest = snap.val();
+      if (!latest) {
+        $("status").textContent = "CONNECTED, WAITING FOR /latest DATA";
+        return;
       }
-      if (chartRoom) {
-        chartRoom.data.labels = formatted.map((r) => r.time);
-        chartRoom.data.datasets[0].data = formatted.map((r) => r.temp);
-        chartRoom.data.datasets[1].data = formatted.map((r) => r.rh);
-        chartRoom.update();
-      }
+      $("connDot").classList.add("online");
+      $("status").textContent = `LIVE FIREBASE${latest.demo ? " (DEMO SPEED)" : ""} | NODE ${latest.node_id}`;
+      render();
+    }, onErr));
+
+    // 2) การดื่มย้อนหลัง 7 วัน + วันนี้ จาก /drinks (หน้า Hydration)
+    if (currentPage === "dashboard") {
+      const since = startOfDay(Date.now()) - 7 * DAY_MS;
+      unsubs.push(onValue(query(ref(db, "drinks"), orderByChild("ts"), startAt(since)), (snap) => {
+        drinks = [];
+        snap.forEach((c) => { drinks.push(c.val()); });
+        render();
+      }, onErr));
+    }
+
+    // 3) กราฟย้อนหลัง 30 จุดจาก /readings (หน้า Sensors)
+    if (currentPage === "sensors") {
+      unsubs.push(onValue(query(ref(db, "readings"), orderByChild("ts"), limitToLast(30)), (snap) => {
+        history = [];
+        snap.forEach((c) => {
+          const r = c.val();
+          history.push({ time: clock(r.ts, true), weight_g: r.weight_g, temp: r.room_t, rh: r.room_rh });
+        });
+        render();
+      }, onErr));
     }
   });
 }
-*/
+
+startLive().catch((err) => runMock("Firebase SDK failed to load: " + err.message));

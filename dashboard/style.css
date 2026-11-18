@@ -1073,3 +1073,11 @@ a:focus-visible, button:focus-visible {
   margin-top: 3px;
   line-height: 1.35;
 }
+
+/* ---- Login (E5): shown only when the database rules refuse to read ---- */
+.login-card[hidden], #who[hidden] { display: none !important; }
+.login-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; }
+.login-card input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+.login-card button { padding: 8px 14px; border: 0; border-radius: 10px; background: var(--aqua); color: #fff; font: inherit; cursor: pointer; }
+.login-note { color: var(--muted); font-size: 0.9em; }
+#who a { color: var(--aqua-deep); margin-left: 6px; }

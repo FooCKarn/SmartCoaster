@@ -64,56 +64,56 @@ dashboard/
 
 | หัวข้อการประเมิน | 🟢 สีเขียว (`green`) | 🟡 สีเหลือง (`yellow`) | 🔴 สีแดง (`red`) |
 | :--- | :--- | :--- | :--- |
-| **1. AI Hydration Risk** | ดื่มน้ำปกติ (`normal` หรือดื่ม $\ge 75\%$) | เริ่มดื่มน้อยกว่าปกติ (`moderate` หรือดื่ม $50\% - 74\%$) | เสี่ยงขาดน้ำสูง (`high` หรือดื่ม $< 50\%$) |
+| **1. AI Hydration Risk** | `ai_p` ≤ 0.62 (`normal`) | `ai_p` มากกว่า 0.62 แต่น้อยกว่า 0.70 (`moderate`) | `ai_p` ≥ 0.70 (`high`) gateway ยกป้าย |
 | **2. Desk Presence** | อยู่ที่โต๊ะ (`0 < dist_cm < 100`) และเสียงปกติ | อยู่ที่โต๊ะ แต่เสียงดัง/กำลังคุย (`sound_p2p > 300`) เลื่อนการเตือนชั่วคราว | ไม่อยู่ที่โต๊ะ (`dist_cm <= 0` หรือ $\ge 100$) งดแจ้งเตือน |
-| **3. Actuator & LINE** | ระบบปกติ ป้าย SG90 พับเก็บ (`idle`) | กำลังยกป้ายเตือน SG90 บนโต๊ะ (`servo_up`) รอดื่มภายใน 15 นาที | ส่งแจ้งเตือนผ่าน LINE แล้ว (`line_sent`) หลังยกป้ายครบ 15 นาที |
+| **3. Actuator & LINE** | ป้าย SG90 พับเก็บ (`sign_up` = false) | ยกป้ายเตือนอยู่ (`sign_up` = true) ถ้าไม่ดื่มภายใน 10 นาที gateway ส่ง LINE | กดปุ่มหยุดฉุกเฉิน (`estop` = true) |
+
+ถ้ายังไม่มี `ai_p` (AI ยังไม่ได้คำนวณ) หัวข้อที่ 1 จะใช้เปอร์เซ็นต์การดื่มเทียบเป้าหมายแทน (≥ 75% เขียว, 50–74% เหลือง, น้อยกว่า 50% แดง)
+
+ค่า 0.70 และ 0.62 ตรงกับ `AI_P_UP` และ `AI_P_DOWN` ใน `gateway/gateway.ino` ถ้าแก้ที่ gateway ให้แก้ใน `app.js` ด้วย
 
 ---
 
-## 4. โครงสร้างข้อมูล JSON ที่รองรับ (Data Schema)
+## 4. ข้อมูลที่อ่านจาก Firebase (Data Schema)
 
-ไฟล์ `app.js` ออกแบบให้รับออบเจ็กต์ข้อมูลที่มีโครงสร้างสอดคล้องกับแพ็กเก็ตจาก Node และข้อมูลประมวลผลจาก Gateway ดังนี้:
+`app.js` อ่าน 3 ที่ใน Realtime Database แล้วแปลงเป็นค่าที่หน้าเว็บใช้ในฟังก์ชัน `toView()`
 
-```json
-{
-  "node_id": "coaster-01",
-  "seq": 1532,
-  "ts": 1793000000000,
-  "weight_g": 312.4,
-  "dist_cm": 20,
-  "batt_mv": 3910,
-  "rssi": -54,
-  "room_t": 30,
-  "room_rh": 67,
-  "sound_p2p": 120,
-  "motion_count": 14,
-  "daily_ml": 1350,
-  "hourly_rate": 168,
-  "last_sip_ts": 1792999100000,
-  "last_sip_ml": 45,
-  "ai_risk": "moderate",
-  "alert_state": "idle"
-}
-```
+| path | ใช้ในหน้า | field ที่ใช้ |
+|---|---|---|
+| `/latest` | ทั้ง 2 หน้า | `node_id`, `seq`, `ts`, `weight_g`, `dist_cm`, `batt_mv`, `rssi`, `room_t`, `room_rh`, `sound_p2p`, `motion_count`, `ml_today`, `ai_p`, `sign_up`, `estop`, `demo` |
+| `/drinks` (7 วันย้อนหลัง) | Hydration | `ts`, `ml`, `ml_today` |
+| `/readings` (30 ค่าล่าสุด) | Sensors & System | `ts`, `weight_g`, `room_t`, `room_rh` |
 
-> **หมายเหตุ:** หากข้อมูลที่ส่งขึ้น Firebase ในระยะแรกมีเฉพาะค่าดิบจากเซนเซอร์ (เช่น ยังไม่มีฟิลด์ `ai_risk` หรือ `alert_state`) โค้ดใน `app.js` มีระบบคำนวณค่าสำรอง (Fallback) จาก `daily_ml`, `dist_cm`, `sound_p2p` และ `servo_up` ให้อัตโนมัติ
+ค่าที่หน้าเว็บคำนวณเอง:
+
+| ค่าบนหน้าเว็บ | มาจาก |
+|---|---|
+| ปริมาณดื่มวันนี้ (`daily_ml`) | `ml_today` ใน `/latest` |
+| ml/hr (`hourly_rate`) | ผลรวม `ml` ใน `/drinks` ช่วง 60 นาทีล่าสุด |
+| ดื่มครั้งล่าสุด (`last_sip_ts`, `last_sip_ml`) | รายการล่าสุดใน `/drinks` |
+| กราฟ 7 วัน (`week_ml`) | ผลรวม `ml` ใน `/drinks` แยกตามวัน (ไม่รวมวันนี้) |
+| Recent Drinks (`sips`) | 6 รายการล่าสุดใน `/drinks` |
+| ระดับ AI (`ai_risk`) | `ai_p` เทียบกับ 0.70 และ 0.62 (ข้อ 3) |
+| สถานะป้าย (`alert_state`) | `estop` ก่อน แล้วค่อย `sign_up` |
+
+ยังไม่มีข้อมูลจาก gateway:
+- สถานะ "ส่ง LINE แล้ว" (`line_sent`)
+- จำนวนแพ็กเก็ตที่ส่งซ้ำ (`pkts_retried`) หน้า Sensors จึงขึ้น "No data"
 
 ---
 
-## 5. วิธีการรันทดสอบและเชื่อมต่อ Firebase จริง
+## 5. วิธีรัน
 
-### 5.1 การรันในโหมดข้อมูลจำลอง (Mock Mode - ค่าเริ่มต้น)
-1. เปิด Terminal และเข้าไปที่โฟลเดอร์ `dashboard/`
-2. รันเซิร์ฟเวอร์จำลองด้วย Python (จำเป็นต้องรันผ่าน HTTP Server เพราะ `app.js` ใช้ ES Module):
-   ```bash
-   python -m http.server 8000
-   ```
-3. เปิดเบราว์เซอร์ไปที่ `http://localhost:8000` หน้าเว็บจะแสดงข้อมูลจำลองจากตัวแปร `MOCK_DATA` ใน `app.js` ทันที
+### 5.1 รันบนเครื่อง
+1. เปิด Terminal ที่โฟลเดอร์ `dashboard/`
+2. รัน `python -m http.server 8000` (ต้องเปิดผ่าน HTTP เพราะ `app.js` เป็น ES Module เปิดแบบ `file://` ไม่ได้)
+3. เปิด `http://localhost:8000`
 
-### 5.2 การสลับไปใช้ข้อมูลจริงจาก Firebase Realtime Database
-1. คัดลอกไฟล์ `dashboard/config.example.js` เป็น `dashboard/config.js` และนำค่า `firebaseConfig` จาก Firebase Console มาใส่ให้ครบถ้วน
-2. เปิดไฟล์ `dashboard/app.js` แล้วดำเนินการดังนี้:
-   * เอาเครื่องหมาย Comment (`/* ... */`) ออกจากส่วน **`[FUTURE: FIREBASE IMPORTS]`** ด้านบนสุดของไฟล์
-   * ลบหรือใส่ Comment ปิดส่วนที่ **4. RUN MOCK MODE**
-   * เอาเครื่องหมาย Comment ออกจากส่วนที่ **5. [FUTURE: FIREBASE REALTIME CONNECTION]** ด้านล่างสุดของไฟล์
-3. รีเฟรชหน้าเว็บ จุดสถานะด้านบนซ้ายจะเปลี่ยนเป็นสีเขียว (`LIVE FIREBASE`) และอัปเดตข้อมูลแบบ Real-time ทันทีที่มีข้อมูลใหม่เข้าสู่ `/latest` และ `/readings`
+### 5.2 ข้อมูลจริงกับข้อมูลจำลอง
+- มี `dashboard/config.js` → ต่อ Firebase จริงทันที จุดสถานะซ้ายบนเป็นสีเขียวและขึ้น `LIVE FIREBASE`
+- ไม่มี `config.js` → แสดง `MOCK_DATA` ใน `app.js` และขึ้น `MOCK DATA MODE`
+- สร้าง `config.js` โดยคัดลอก `config.example.js` แล้วใส่ `firebaseConfig` จาก Firebase Console (Project settings → Your apps → Web app)
+
+### 5.3 ล็อกอิน (E5)
+- ถ้าใช้ rules แบบ test mode อ่านได้เลย ไม่ต้องล็อกอิน
+- ถ้าใช้ `firebase/database.rules.json` (ต้องล็อกอิน) หน้าเว็บจะขึ้นฟอร์ม Sign in ให้ใส่อีเมลและรหัสผ่านของบัญชีใน Firebase Authentication
