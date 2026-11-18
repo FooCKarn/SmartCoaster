@@ -14,6 +14,8 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
+#include <LittleFS.h>
+#include <time.h>
 #include "../gateway/gateway.ino"
 #elif defined(SC_SKETCH_T01_BLINK)
 #include <WiFi.h>

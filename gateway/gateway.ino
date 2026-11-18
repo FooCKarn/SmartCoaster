@@ -1,4 +1,10 @@
-// gateway/gateway.ino
+// gateway/gateway.ino — FreeRTOS version (E1) + ACK/offline queue (E4)
+//
+//  ESP-NOW callback ──rxQueue──▶ nodeTask ──uploadQueue──▶ netTask ──HTTPS──▶ Firebase
+//        ▲  ACK ◀──────────────────┘   │ ตรวจการดื่ม                   │ เน็ตล่ม → flash (LittleFS)
+//  sensorTask (DHT11, KY-038) ─┐       │                               └── lineQueue → LINE
+//  PIR / e-stop ISR ───────────┼─▶ state (mutex) ◀── aiTask ──servoQueue──▶ servoTask ──▶ SG90
+//
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
@@ -8,10 +14,11 @@
 #include <DHT.h>
 #include <time.h>
 #include "msg.h"
+#include "secrets.h"
 #include "line_push.h"
+#include "cloud.h"
 #include "drink_detect.h"
 #include "ai_model.h"
-#include "secrets.h"
 
 const int DHT_PIN = 14, PIR_PIN = 27, SND_AO = 35, SND_DO = 32;
 const int SERVO_PIN = 18, STOP_BTN = 33, LED = 2;
@@ -31,250 +38,384 @@ const float    PRESENCE_CM    = 80;     // ultrasonic < นี้ = มีคน
 const uint32_t PIR_WINDOW_MS  = 5UL * 60UL * 1000UL;     // PIR ขยับภายใน 5 นาที = มีคน
 const int      SIGN_UP_DEG = 90, SIGN_DOWN_DEG = 0;
 const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 วินาที
+const uint32_t SENSE_EVERY_MS = 5000;   // อ่าน DHT11 / เสียง ทุก 5 วินาที
 // =====================================
 
 DHT dht(DHT_PIN, DHT11);
 
-// ---- ข้อมูลจาก node (เขียนใน callback, อ่านใน loop) ----
-portMUX_TYPE rxMux = portMUX_INITIALIZER_UNLOCKED;
-volatile bool rxReady = false;
-NodeMsg rxMsg;
-int rxRssi = 0;
+// ---------------- FreeRTOS objects (E1) ----------------
+struct RxItem { NodeMsg m; int rssi; uint8_t mac[6]; };
+QueueHandle_t rxQueue;       // ESP-NOW callback → nodeTask
+QueueHandle_t uploadQueue;   // nodeTask → netTask  (UpItem)
+QueueHandle_t servoQueue;    // ใครก็ได้ → servoTask (มุมล่าสุด, ยาว 1 ใช้ xQueueOverwrite)
+QueueHandle_t lineQueue;     // aiTask / Serial → netTask (ข้อความ LINE)
+SemaphoreHandle_t stateMutex;
+struct LineMsg { char text[200]; };
 
-// ---- interrupt ----
-uint32_t motionCount = 0;
-volatile uint32_t lastMotionMs = 0;
+// ---------------- interrupt (E2) ----------------
+volatile uint32_t motionCount = 0, lastMotionMs = 0;
 volatile bool estop = false;
-portMUX_TYPE motionMux = portMUX_INITIALIZER_UNLOCKED;
-void IRAM_ATTR onMotion() {
-  portENTER_CRITICAL_ISR(&motionMux);
-  motionCount++;
-  lastMotionMs = millis();
-  portEXIT_CRITICAL_ISR(&motionMux);
-}
+void IRAM_ATTR onMotion() { motionCount = motionCount + 1; lastMotionMs = millis(); }
 void IRAM_ATTR onStop()   { estop = true; }
 
-uint32_t readMotionCount() {
-  portENTER_CRITICAL(&motionMux);
-  uint32_t count = motionCount;
-  portEXIT_CRITICAL(&motionMux);
-  return count;
-}
+// ---------------- state ที่หลาย task ใช้ร่วมกัน (ล็อกด้วย stateMutex) ----------------
+struct State {
+  float roomT = NAN, roomRH = NAN;
+  int   soundP2P = 0;
+  float lastDistCm = -1;
+  // การดื่ม
+  DrinkDetector drink;
+  struct { uint32_t ms; float ml; } hist[32];
+  int histHead = 0, histCount = 0;
+  uint32_t lastDrinkMs = 0;
+  float mlToday = 0;
+  int todayYday = -1;
+  // AI + ป้าย
+  float aiX[AI_N_FEATURES] = {0};
+  float aiP = NAN;
+  bool signUp = false;
+  uint32_t signUpSinceMs = 0, holdUntilMs = 0;
+  uint32_t lastLineMs = 0;
+  // สถิติ
+  uint32_t rxCount = 0, dupCount = 0, uploadDrop = 0;
+} S;
 
-// ---- ค่าเซนเซอร์ gateway ล่าสุด ----
-float roomT = NAN, roomRH = NAN;
-int soundP2P = 0;
-float lastDistCm = -1;
-
-// ---- การดื่ม ----
-DrinkDetector drink;
-struct DrinkLog { uint32_t ms; float ml; };
-DrinkLog drinkHist[32];
-int drinkHead = 0, drinkCount = 0;
-uint32_t lastDrinkMs = 0;      // millis() ตอนดื่มครั้งล่าสุด (เริ่มนับจากเปิดเครื่อง)
-float mlToday = 0;
-int todayYday = -1;
-
-// ---- AI + ป้าย ----
-float aiX[AI_N_FEATURES];
-float aiP = NAN;
-bool signUp = false;
-uint32_t signUpSinceMs = 0, holdUntilMs = 0;
-uint32_t lastLineMs = 0;
-bool needReminder = false;
-String reminderText = "ถึงเวลาดื่มน้ำแล้ว 💧";
+struct Lock {
+  Lock()  { xSemaphoreTake(stateMutex, portMAX_DELAY); }
+  ~Lock() { xSemaphoreGive(stateMutex); }
+};
 
 // นาทีที่ผ่านไป (คูณ DEMO_SPEED แล้ว)
 float minsSince(uint32_t ms) { return (millis() - ms) / 60000.0f * DEMO_SPEED; }
 uint32_t scaledMinToMs(float m) { return (uint32_t)(m * 60000.0f / DEMO_SPEED); }
 
-void onRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
-  if (len != sizeof(NodeMsg)) return;
-  portENTER_CRITICAL(&rxMux);
-  memcpy(&rxMsg, data, sizeof(NodeMsg));
-  rxRssi = info->rx_ctrl ? info->rx_ctrl->rssi : 0;
-  rxReady = true;
-  portEXIT_CRITICAL(&rxMux);
-}
-
-void servoDeg(int deg) {
+// ---------------- servo ----------------
+void servoWrite(int deg) {
   uint32_t us = map(constrain(deg, 0, 180), 0, 180, 500, 2400);
   ledcWrite(SERVO_PIN, us * 65535UL / 20000UL);
 }
 
-void setSign(bool up, const char *why) {
-  if (estop) return;                       // หยุดฉุกเฉินอยู่ ห้ามขยับ
-  if (up == signUp) return;
-  signUp = up;
-  if (up) signUpSinceMs = millis();
-  servoDeg(up ? SIGN_UP_DEG : SIGN_DOWN_DEG);
-  Serial.printf("[SIGN] %s (%s)\n", up ? "UP ⬆" : "DOWN ⬇", why);
+// เรียกตอนถือ Lock อยู่
+void setSignLocked(bool up, const char *why) {
+  if (estop || up == S.signUp) return;
+  S.signUp = up;
+  if (up) S.signUpSinceMs = millis();
+  int deg = up ? SIGN_UP_DEG : SIGN_DOWN_DEG;
+  xQueueOverwrite(servoQueue, &deg);
+  Serial.printf("[SIGN] %s (%s)\n", up ? "UP" : "DOWN", why);
 }
 
-int readSound() {
-  int lo = 4095, hi = 0; uint32_t t0 = millis();
-  while (millis() - t0 < 50) { int v = analogRead(SND_AO); lo = min(lo, v); hi = max(hi, v); }
-  return hi - lo;
-}
-
-// ---------------- Firebase ----------------
-int firebaseSend(const char *method, const String &path, const String &body) {
-  if (WiFi.status() != WL_CONNECTED) return -1;
-  WiFiClientSecure client;
-  client.setInsecure();   // ช่วง checkpoint เท่านั้น! ขั้น 5.5 เปลี่ยนเป็นตรวจ cert (E5)
-  HTTPClient http;
-  String auth = String(DB_AUTH).length() ? String("?auth=") + DB_AUTH : "";
-  http.begin(client, String(DB_URL) + path + ".json" + auth);
-  http.addHeader("Content-Type", "application/json");
-  int code = http.sendRequest(method, body);
-  http.end();
-  return code;
-}
-
-bool postToFirebase(const NodeMsg &m, int rssi) {
-  JsonDocument doc;
-  doc["node_id"]   = m.node_id;
-  doc["seq"]       = m.seq;
-  doc["weight_g"]  = m.weight_g;
-  doc["dist_cm"]   = m.dist_cm;
-  doc["batt_mv"]   = m.batt_mv;
-  doc["rssi"]      = rssi;
-  doc["room_t"]    = roomT;
-  doc["room_rh"]   = roomRH;
-  doc["sound_p2p"] = soundP2P;
-  doc["motion_count"] = readMotionCount();
-  // ---- ผลการดื่ม + AI ----
-  doc["cup"]       = drink.cupPresent();
-  doc["ml_today"]  = mlToday;
-  doc["mins_since_drink"] = minsSince(lastDrinkMs);
-  if (!isnan(aiP)) {
-    doc["ai_p"] = aiP;
-    JsonArray x = doc["ai_x"].to<JsonArray>();     // feature ที่ AI ใช้ เก็บไว้เทรนใหม่ (ai/train.py)
-    for (int i = 0; i < AI_N_FEATURES; i++) x.add(aiX[i]);
+void servoTask(void *) {
+  int target = SIGN_DOWN_DEG;
+  bool stopped = false;
+  servoWrite(target);
+  for (;;) {
+    int deg;
+    if (xQueueReceive(servoQueue, &deg, pdMS_TO_TICKS(50)) == pdTRUE) target = deg;
+    if (estop) {
+      if (!stopped) { ledcWrite(SERVO_PIN, 0); stopped = true; Serial.println("[ESTOP] หยุดเซอร์โวแล้ว (พิมพ์ c เพื่อปลด)"); }
+      continue;
+    }
+    if (stopped) stopped = false;
+    servoWrite(target);
   }
-  doc["sign_up"]   = signUp;
-  doc["estop"]     = (bool)estop;
-  if (DEMO_SPEED != 1) doc["demo"] = true;
-  doc["ts"][".sv"] = "timestamp";          // ให้ Firebase ใส่เวลาเอง (ms)
-  String body; serializeJson(doc, body);
-
-  int code = firebaseSend("POST", "/readings", body);
-  firebaseSend("PUT", "/latest", body);
-  Serial.printf("Firebase POST -> %d\n", code);
-  return code == 200;
 }
 
-void postDrinkEvent(DrinkEvent ev, float amount, uint8_t nodeId) {
-  JsonDocument doc;
-  doc["node_id"] = nodeId;
-  doc["type"]    = drinkEventName(ev);
-  doc["ml"]      = amount;
-  doc["ml_today"] = mlToday;
-  if (DEMO_SPEED != 1) doc["demo"] = true;
-  doc["ts"][".sv"] = "timestamp";
-  String body; serializeJson(doc, body);
-  // ดื่ม → /drinks (ข้อมูลให้ AI), เติมน้ำ → /refills
-  int code = firebaseSend("POST", ev == EV_DRINK ? "/drinks" : "/refills", body);
-  Serial.printf("Firebase %s -> %d\n", ev == EV_DRINK ? "/drinks" : "/refills", code);
+// ---------------- ESP-NOW ----------------
+void onRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  if (len != sizeof(NodeMsg)) return;
+  RxItem it;
+  memcpy(&it.m, data, sizeof(NodeMsg));
+  if (it.m.version != MSG_VERSION || it.m.type != MSG_DATA) return;
+  it.rssi = info->rx_ctrl ? info->rx_ctrl->rssi : 0;
+  memcpy(it.mac, info->src_addr, 6);
+  xQueueSend(rxQueue, &it, 0);           // callback ห้ามรอ เต็มก็ทิ้ง (node จะส่งซ้ำเพราะไม่ได้ ACK)
+}
+
+void sendAck(const RxItem &it) {
+  if (!esp_now_is_peer_exist(it.mac)) {
+    esp_now_peer_info_t peer = {};
+    memcpy(peer.peer_addr, it.mac, 6);
+    peer.channel = 0;                    // 0 = ช่องเดียวกับ Wi-Fi ปัจจุบัน
+    peer.ifidx = WIFI_IF_STA;
+    peer.encrypt = false;
+    esp_now_add_peer(&peer);
+  }
+  AckMsg a = {MSG_VERSION, MSG_ACK, it.m.node_id, it.m.boot_id, it.m.seq};
+  esp_now_send(it.mac, (uint8_t *)&a, sizeof(a));
+}
+
+// กันข้อมูลซ้ำ (node ส่งซ้ำเมื่อ ACK หาย) จำ (boot_id, seq) ล่าสุด 32 ค่าต่อ node
+bool isDuplicate(const NodeMsg &m) {
+  static struct { uint8_t node; uint16_t boot; uint32_t seq; } seen[32];
+  static int head = 0;
+  for (auto &s : seen)
+    if (s.seq == m.seq && s.boot == m.boot_id && s.node == m.node_id) return true;
+  seen[head] = {m.node_id, m.boot_id, m.seq};
+  head = (head + 1) % 32;
+  return false;
 }
 
 // ---------------- การดื่ม ----------------
-void checkNewDay() {
-  struct tm t;
-  if (!getLocalTime(&t, 0)) return;        // ยังไม่ได้เวลาจาก NTP
-  if (todayYday != t.tm_yday) {
-    if (todayYday != -1) Serial.println("[DRINK] วันใหม่ รีเซ็ตยอดวันนี้");
-    todayYday = t.tm_yday;
-    mlToday = 0;
-  }
-}
-
-void recordDrink(float ml) {
-  drinkHist[drinkHead] = {(uint32_t)millis(), ml};
-  drinkHead = (drinkHead + 1) % 32;
-  if (drinkCount < 32) drinkCount++;
-  lastDrinkMs = millis();
-  mlToday += ml;
-}
-
-float mlLastHour() {
+float mlLastHourLocked() {
   float sum = 0;
-  for (int i = 0; i < drinkCount; i++) {
-    const DrinkLog &d = drinkHist[(drinkHead - 1 - i + 32) % 32];
-    if (minsSince(d.ms) < 60) sum += d.ml;
+  for (int i = 0; i < S.histCount; i++) {
+    int idx = (S.histHead - 1 - i + 32) % 32;
+    if (minsSince(S.hist[idx].ms) < 60) sum += S.hist[idx].ml;
   }
   return sum;
 }
 
-void handleWeight(const NodeMsg &m) {
-  float amount;
-  DrinkEvent ev = drink.update(m.weight_g, &amount);
-  if (ev == EV_NONE) return;
-  Serial.printf("[DRINK] %s %.0f g (วันนี้ %.0f ml)\n", drinkEventName(ev), amount, mlToday + (ev == EV_DRINK ? amount : 0));
-  if (ev == EV_DRINK) {
-    recordDrink(amount);
-    holdUntilMs = millis() + scaledMinToMs(HOLD_DOWN_MIN);
-    setSign(false, "ดื่มแล้ว");
+// ใส่เวลา ts (ms) และ key ให้ UpItem  sampleAgeMs = ค่านี้วัดมาแล้วนานเท่าไร
+void stampItem(UpItem &it, JsonDocument &doc, uint32_t sampleAgeMs, const char *suffix) {
+  if (timeValid()) {
+    char ts[24];
+    snprintf(ts, sizeof(ts), "%llu", (unsigned long long)(epochMs() - sampleAgeMs));
+    doc["ts"] = serialized(String(ts));
+    snprintf(it.key, sizeof(it.key), "%s-%s", ts, suffix);
+  } else {
+    doc["ts"][".sv"] = "timestamp";      // ยังไม่ได้เวลา NTP ให้ Firebase ใส่เวลาเอง
+    it.key[0] = 0;
   }
-  if (ev == EV_DRINK || ev == EV_REFILL) postDrinkEvent(ev, amount, m.node_id);
+  if (DEMO_SPEED != 1) doc["demo"] = true;
+}
+
+void queueUpload(UpItem &it, JsonDocument &doc) {
+  if (measureJson(doc) >= sizeof(it.body)) { Serial.println("[UP] JSON ยาวเกิน ทิ้ง"); return; }
+  serializeJson(doc, it.body, sizeof(it.body));
+  if (xQueueSend(uploadQueue, &it, pdMS_TO_TICKS(200)) != pdTRUE) { Lock l; S.uploadDrop++; }
+}
+
+void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
+  if (ev == EV_DRINK) {
+    S.hist[S.histHead].ms = millis();
+    S.hist[S.histHead].ml = amount;
+    S.histHead = (S.histHead + 1) % 32;
+    if (S.histCount < 32) S.histCount++;
+    S.lastDrinkMs = millis();
+    S.mlToday += amount;
+    S.holdUntilMs = millis() + scaledMinToMs(HOLD_DOWN_MIN);
+    setSignLocked(false, "ดื่มแล้ว");
+  }
+  Serial.printf("[DRINK] %s %.0f g (วันนี้ %.0f ml)\n", drinkEventName(ev), amount, S.mlToday);
+}
+
+void nodeTask(void *) {
+  RxItem it;
+  for (;;) {
+    if (xQueueReceive(rxQueue, &it, portMAX_DELAY) != pdTRUE) continue;
+    sendAck(it);                          // E4: ตอบรับก่อน แม้จะเป็นค่าซ้ำ
+    const NodeMsg &m = it.m;
+    if (isDuplicate(m)) { Lock l; S.dupCount++; continue; }
+
+    UpItem up = {};
+    JsonDocument rec;
+    DrinkEvent ev;
+    float amount = 0;
+    {
+      Lock l;
+      S.rxCount++;
+      S.lastDistCm = m.dist_cm;
+      ev = S.drink.update(m.weight_g, &amount);
+      if (ev != EV_NONE) handleDrinkLocked(m, ev, amount);
+
+      rec["node_id"]   = m.node_id;
+      rec["seq"]       = m.seq;
+      rec["weight_g"]  = m.weight_g;
+      rec["dist_cm"]   = m.dist_cm;
+      rec["batt_mv"]   = m.batt_mv;
+      rec["rssi"]      = it.rssi;
+      if (m.age_ms) rec["age_ms"] = m.age_ms;          // มาช้าเพราะค้างในคิว node
+      rec["room_t"]    = S.roomT;
+      rec["room_rh"]   = S.roomRH;
+      rec["sound_p2p"] = S.soundP2P;
+      rec["motion_count"] = (uint32_t)motionCount;
+      rec["cup"]       = S.drink.cupPresent();
+      rec["ml_today"]  = S.mlToday;
+      rec["mins_since_drink"] = minsSince(S.lastDrinkMs);
+      if (!isnan(S.aiP)) {
+        rec["ai_p"] = S.aiP;
+        JsonArray x = rec["ai_x"].to<JsonArray>();     // feature ที่ AI ใช้ เก็บไว้เทรนใหม่ (ai/train.py)
+        for (int i = 0; i < AI_N_FEATURES; i++) x.add(S.aiX[i]);
+      }
+      rec["sign_up"]   = S.signUp;
+      rec["estop"]     = (bool)estop;
+    }
+    Serial.printf("RX node=%d seq=%lu w=%.1f d=%.1f rssi=%d age=%lums queued=%u\n",
+                  m.node_id, (unsigned long)m.seq, m.weight_g, m.dist_cm, it.rssi,
+                  (unsigned long)m.age_ms, m.queued);
+
+    char suffix[16];
+    snprintf(suffix, sizeof(suffix), "%u-%lu", m.node_id, (unsigned long)m.seq);
+    strlcpy(up.path, "readings", sizeof(up.path));
+    up.latest = (m.queued == 0);          // ค่าล่าสุดจริง ๆ เท่านั้นที่ทับ /latest
+    stampItem(up, rec, m.age_ms, suffix);
+    queueUpload(up, rec);
+
+    if (ev == EV_DRINK || ev == EV_REFILL) {
+      UpItem d = {};
+      JsonDocument doc;
+      doc["node_id"] = m.node_id;
+      doc["type"]    = drinkEventName(ev);
+      doc["ml"]      = amount;
+      { Lock l; doc["ml_today"] = S.mlToday; }
+      strlcpy(d.path, ev == EV_DRINK ? "drinks" : "refills", sizeof(d.path));
+      stampItem(d, doc, m.age_ms, suffix);
+      queueUpload(d, doc);
+    }
+  }
+}
+
+// ---------------- เซนเซอร์ gateway ----------------
+int readSound() {
+  int lo = 4095, hi = 0; uint32_t t0 = millis();
+  while (millis() - t0 < 50) { int v = analogRead(SND_AO); lo = min(lo, v); hi = max(hi, v); vTaskDelay(1); }
+  return hi - lo;
+}
+
+void sensorTask(void *) {
+  TickType_t wake = xTaskGetTickCount();
+  for (;;) {
+    float t = dht.readTemperature(), h = dht.readHumidity();
+    int snd = readSound();
+    struct tm now;
+    bool haveTime = getLocalTime(&now, 0);
+    {
+      Lock l;
+      if (!isnan(t)) S.roomT = t;
+      if (!isnan(h)) S.roomRH = h;
+      S.soundP2P = snd;
+      if (haveTime && S.todayYday != now.tm_yday) {      // วันใหม่ → รีเซ็ตยอดวันนี้
+        if (S.todayYday != -1) Serial.println("[DRINK] วันใหม่ รีเซ็ตยอดวันนี้");
+        S.todayYday = now.tm_yday;
+        S.mlToday = 0;
+      }
+    }
+    vTaskDelayUntil(&wake, pdMS_TO_TICKS(SENSE_EVERY_MS));
+  }
 }
 
 // ---------------- AI ----------------
-bool personPresent() {
-  bool pir = lastMotionMs != 0 && millis() - lastMotionMs < PIR_WINDOW_MS;
-  bool near = lastDistCm > 0 && lastDistCm < PRESENCE_CM;
-  return pir || near;
-}
-
 // ลำดับต้องตรงกับ FEATURES ใน ai/train.py
-void computeFeatures(float *x) {
-  x[0] = min(minsSince(lastDrinkMs), 240.0f);
-  x[1] = mlLastHour();
-  x[2] = mlToday;
-  x[3] = isnan(roomT)  ? AI_MEAN[3] : roomT;    // DHT ยังไม่มีค่า ใช้ค่าเฉลี่ยแทน
-  x[4] = isnan(roomRH) ? AI_MEAN[4] : roomRH;
-  x[5] = personPresent() ? 1 : 0;
-  x[6] = soundP2P;
+void computeFeaturesLocked(float *x) {
+  bool pir  = lastMotionMs != 0 && millis() - lastMotionMs < PIR_WINDOW_MS;
+  bool near = S.lastDistCm > 0 && S.lastDistCm < PRESENCE_CM;
+  x[0] = min(minsSince(S.lastDrinkMs), 240.0f);
+  x[1] = mlLastHourLocked();
+  x[2] = S.mlToday;
+  x[3] = isnan(S.roomT)  ? AI_MEAN[3] : S.roomT;    // DHT ยังไม่มีค่า ใช้ค่าเฉลี่ยแทน
+  x[4] = isnan(S.roomRH) ? AI_MEAN[4] : S.roomRH;
+  x[5] = (pir || near) ? 1 : 0;
+  x[6] = S.soundP2P;
 }
 
-void runAI() {
-  computeFeatures(aiX);
-  aiP = aiPredict(aiX);
-  bool holding = (int32_t)(holdUntilMs - millis()) > 0;
-  if (!signUp && !holding && aiP >= AI_P_UP) setSign(true, "AI: เสี่ยงดื่มน้อย");
-  else if (signUp && aiP <= AI_P_DOWN)       setSign(false, "AI: ความเสี่ยงลดลง");
+void printAILocked() {
+  Serial.printf("[AI] p=%.2f sign=%s |", S.aiP, S.signUp ? "UP" : "DOWN");
+  for (int i = 0; i < AI_N_FEATURES; i++) Serial.printf(" %s=%.1f", AI_FEATURE_NAMES[i], S.aiX[i]);
+  Serial.println();
+}
 
-  // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE
-  if (signUp && minsSince(signUpSinceMs) >= LINE_AFTER_MIN && !needReminder &&
-      (lastLineMs == 0 || millis() - lastLineMs >= LINE_COOLDOWN_MS)) {
-    char buf[160];
-    snprintf(buf, sizeof(buf), "ถึงเวลาดื่มน้ำแล้ว 💧 ไม่ได้ดื่มมา %.0f นาที วันนี้ดื่มไป %.0f ml",
-             minsSince(lastDrinkMs), mlToday);
-    reminderText = buf;
-    needReminder = true;
+void runAIOnce(bool print) {
+  LineMsg lm;
+  bool sendLine = false;
+  {
+    Lock l;
+    computeFeaturesLocked(S.aiX);
+    S.aiP = aiPredict(S.aiX);
+    bool holding = (int32_t)(S.holdUntilMs - millis()) > 0;
+    if (!S.signUp && !holding && S.aiP >= AI_P_UP) setSignLocked(true, "AI: เสี่ยงดื่มน้อย");
+    else if (S.signUp && S.aiP <= AI_P_DOWN)        setSignLocked(false, "AI: ความเสี่ยงลดลง");
+
+    // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE
+    if (S.signUp && minsSince(S.signUpSinceMs) >= LINE_AFTER_MIN &&
+        (S.lastLineMs == 0 || millis() - S.lastLineMs >= LINE_COOLDOWN_MS)) {
+      snprintf(lm.text, sizeof(lm.text), "ถึงเวลาดื่มน้ำแล้ว 💧 ไม่ได้ดื่มมา %.0f นาที วันนี้ดื่มไป %.0f ml",
+               minsSince(S.lastDrinkMs), S.mlToday);
+      S.lastLineMs = millis();
+      sendLine = true;
+    }
+    if (print) printAILocked();
+  }
+  if (sendLine) xQueueSend(lineQueue, &lm, 0);
+}
+
+void aiTask(void *) {
+  TickType_t wake = xTaskGetTickCount();
+  for (;;) {
+    runAIOnce(true);
+    vTaskDelayUntil(&wake, pdMS_TO_TICKS(AI_EVERY_MS));
   }
 }
 
-void printAI() {
-  Serial.printf("[AI] p=%.2f  sign=%s  (", aiP, signUp ? "UP" : "DOWN");
-  for (int i = 0; i < AI_N_FEATURES; i++) Serial.printf("%s=%.1f ", AI_FEATURE_NAMES[i], aiX[i]);
-  Serial.printf(") model=%s\n", AI_TRAINED_ON);
+// ---------------- เน็ต: Wi-Fi + Firebase + flash queue + LINE ----------------
+void netTask(void *) {
+  cloudBegin();
+  storeBegin();
+  uint32_t lastWifiTry = 0;
+  for (;;) {
+    bool online = WiFi.status() == WL_CONNECTED;
+    if (!online && millis() - lastWifiTry > 10000) {      // Robustness: ต่อใหม่ทุก 10 วิ
+      lastWifiTry = millis();
+      Serial.println("[NET] WiFi lost, reconnecting");
+      WiFi.reconnect();
+    }
+
+    UpItem it;
+    if (xQueueReceive(uploadQueue, &it, pdMS_TO_TICKS(500)) == pdTRUE) {
+      digitalWrite(LED, HIGH);
+      bool ok = false;
+      if (online && storeCount == 0) ok = fbUpload(it);
+      if (!ok) {
+        // เน็ตล่ม / ส่งไม่สำเร็จ / มีของค้างใน flash อยู่แล้ว (ต่อท้ายไว้ รักษาลำดับเวลา)
+        if (online && it.latest) fbRequest("PUT", "/latest", it.body);   // ให้ dashboard เห็นค่าล่าสุดไว้ก่อน
+        storeAppend(it);
+      }
+      digitalWrite(LED, LOW);
+    } else if (online && storeCount > 0) {
+      storeFlush(10);                                       // ว่าง → ไล่ส่งของค้าง
+    }
+
+    LineMsg lm;
+    if (xQueueReceive(lineQueue, &lm, 0) == pdTRUE) {
+      String resp;
+      int code = lineBroadcast(LINE_TOKEN, lm.text, &resp);
+      Serial.printf("[LINE] broadcast -> %d\n", code);
+      if (code != 200 && resp.length()) Serial.println(resp);
+    }
+  }
+}
+
+// ---------------- Serial (loop) ----------------
+void printStatus() {
+  Lock l;
+  Serial.printf("[STATUS] rx=%lu dup=%lu upDrop=%lu fbOk=%lu fbFail=%lu flash=%lu(drop %lu) wifi=%s heap=%lu\n",
+                (unsigned long)S.rxCount, (unsigned long)S.dupCount, (unsigned long)S.uploadDrop,
+                (unsigned long)fbOk, (unsigned long)fbFail, (unsigned long)storeCount,
+                (unsigned long)storeDropped, WiFi.status() == WL_CONNECTED ? "ok" : "DOWN",
+                (unsigned long)ESP.getFreeHeap());
 }
 
 void handleSerialCommands() {
   while (Serial.available()) {
     const char c = Serial.read();
     if (c == 'm') {
-      reminderText = "ถึงเวลาดื่มน้ำแล้ว 💧 (ทดสอบ)";
-      needReminder = true;
+      LineMsg lm;
+      strlcpy(lm.text, "ถึงเวลาดื่มน้ำแล้ว 💧 (ทดสอบ)", sizeof(lm.text));
+      xQueueSend(lineQueue, &lm, 0);
     } else if (c == 'q') {
       int usage = lineConsumption(LINE_TOKEN);
       if (usage >= 0) Serial.printf("LINE messages used this month: %d\n", usage);
       else Serial.println("Failed to read LINE message usage");
-    } else if (c == 'a') { runAI(); printAI(); }
-    else if (c == 'u') { setSign(true, "สั่งจาก Serial"); }
-    else if (c == 'n') { setSign(false, "สั่งจาก Serial"); }
-    else if (c == 'c') { estop = false; Serial.println("[ESTOP] ปลดหยุดฉุกเฉินแล้ว"); servoDeg(signUp ? SIGN_UP_DEG : SIGN_DOWN_DEG); }
+    } else if (c == 'a') { runAIOnce(true); }
+    else if (c == 'u') { Lock l; setSignLocked(true, "สั่งจาก Serial"); }
+    else if (c == 'n') { Lock l; setSignLocked(false, "สั่งจาก Serial"); }
+    else if (c == 'c') {
+      estop = false;
+      int deg; { Lock l; deg = S.signUp ? SIGN_UP_DEG : SIGN_DOWN_DEG; }
+      xQueueOverwrite(servoQueue, &deg);
+      Serial.println("[ESTOP] ปลดหยุดฉุกเฉินแล้ว");
+    }
+    else if (c == 's') { printStatus(); }
   }
 }
 
@@ -287,78 +428,42 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIR_PIN), onMotion, RISING);
   attachInterrupt(digitalPinToInterrupt(STOP_BTN), onStop, FALLING);
   ledcAttach(SERVO_PIN, 50, 16);
-  servoDeg(SIGN_DOWN_DEG);
   dht.begin();
 
+  rxQueue     = xQueueCreate(10, sizeof(RxItem));
+  uploadQueue = xQueueCreate(6, sizeof(UpItem));
+  servoQueue  = xQueueCreate(1, sizeof(int));
+  lineQueue   = xQueueCreate(2, sizeof(LineMsg));
+  stateMutex  = xSemaphoreCreateMutex();
+
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("WiFi connecting");
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print('.'); }
-  Serial.printf("\nWiFi OK  IP=%s  WiFi channel = %ld  <- ใส่เลขนี้ใน node\n",
-                WiFi.localIP().toString().c_str(), WiFi.channel());
-  configTzTime("ICT-7", "pool.ntp.org", "time.google.com");   // เวลาไทย ใช้รีเซ็ตยอดดื่มตอนเที่ยงคืน
+  // รอ Wi-Fi สูงสุด 20 วิ ไม่ได้ก็ทำงานต่อ (ข้อมูลเก็บลง flash ไว้ก่อน)
+  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print('.'); }
+  if (WiFi.status() == WL_CONNECTED)
+    Serial.printf("\nWiFi OK  IP=%s  WiFi channel = %ld  <- ใส่เลขนี้ใน node\n",
+                  WiFi.localIP().toString().c_str(), (long)WiFi.channel());
+  else
+    Serial.println("\nWiFi ยังไม่ติด ทำงานต่อแบบ offline (node ต้องตั้ง channel ตรงกับ router)");
+  configTzTime("ICT-7", "pool.ntp.org", "time.google.com");   // เวลาไทย ใช้รีเซ็ตยอดดื่ม + timestamp
 
   if (esp_now_init() != ESP_OK) { Serial.println("ESP-NOW init FAILED"); while (true) delay(1000); }
   esp_now_register_recv_cb(onRecv);
+
+  //                       ฟังก์ชัน     ชื่อ        stack   param prio handle
+  xTaskCreate(servoTask,  "servo",  2048,  nullptr, 4, nullptr);
+  xTaskCreate(nodeTask,   "node",   6144,  nullptr, 3, nullptr);
+  xTaskCreate(sensorTask, "sensor", 3072,  nullptr, 2, nullptr);
+  xTaskCreate(aiTask,     "ai",     4096,  nullptr, 2, nullptr);
+  xTaskCreate(netTask,    "net",    12288, nullptr, 1, nullptr);   // HTTPS/TLS ใช้ stack เยอะ
+
   Serial.printf("Gateway ready  (AI model: %s, DEMO_SPEED=%d)\n", AI_TRAINED_ON, DEMO_SPEED);
-  Serial.println("Serial: a=ดูค่า AI  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  q=โควตา LINE");
+  Serial.println("Serial: a=ดูค่า AI  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  q=โควตา LINE");
 }
 
 void loop() {
   handleSerialCommands();
-
-  if (needReminder) {
-    String response;
-    int code = lineBroadcast(LINE_TOKEN, reminderText.c_str(), &response);
-    Serial.printf("LINE broadcast -> %d\n", code);
-    if (code != 200 && response.length()) Serial.println(response);
-    lastLineMs = millis();                 // สำเร็จหรือไม่ก็พักก่อน กันยิงซ้ำรัว ๆ
-    needReminder = false;
-  }
-
-  // 1) ปุ่มหยุดฉุกเฉิน: ตัดสัญญาณเซอร์โว (กด c ใน Serial เพื่อปลด)
-  if (estop) { ledcWrite(SERVO_PIN, 0); }
-
-  // 2) อ่านเซนเซอร์ gateway ทุก 5 วินาที
-  static uint32_t lastSense = 0;
-  if (millis() - lastSense > 5000) {
-    lastSense = millis();
-    float t = dht.readTemperature(), h = dht.readHumidity();
-    if (!isnan(t)) roomT = t;
-    if (!isnan(h)) roomRH = h;
-    soundP2P = readSound();
-    checkNewDay();
-  }
-
-  // 3) AI ตัดสินใจยก/ลดป้าย
-  static uint32_t lastAI = 0;
-  if (millis() - lastAI > AI_EVERY_MS) {
-    lastAI = millis();
-    runAI();
-    printAI();
-  }
-
-  // 4) มีข้อมูลจาก node → ตรวจการดื่ม → อัปโหลด
-  if (rxReady) {
-    NodeMsg m; int rssi;
-    portENTER_CRITICAL(&rxMux);
-    m = rxMsg; rssi = rxRssi; rxReady = false;
-    portEXIT_CRITICAL(&rxMux);
-
-    lastDistCm = m.dist_cm;
-    Serial.printf("RX node=%d seq=%lu w=%.1f d=%.1f rssi=%d | T=%.0f RH=%.0f snd=%d mot=%lu\n",
-                  m.node_id, m.seq, m.weight_g, m.dist_cm, rssi,
-                  roomT, roomRH, soundP2P, readMotionCount());
-    handleWeight(m);
-    digitalWrite(LED, HIGH);
-    postToFirebase(m, rssi);
-    digitalWrite(LED, LOW);
-  }
-
-  // 5) Wi-Fi หลุด → ต่อใหม่ (Robustness)
-  static uint32_t lastWifiCheck = 0;
-  if (millis() - lastWifiCheck > 10000) {
-    lastWifiCheck = millis();
-    if (WiFi.status() != WL_CONNECTED) { Serial.println("WiFi lost, reconnecting"); WiFi.reconnect(); }
-  }
+  vTaskDelay(pdMS_TO_TICKS(20));
 }
