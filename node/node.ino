@@ -7,7 +7,7 @@
 
 // ===== แก้ 3 ค่านี้ =====
 uint8_t GATEWAY_MAC[6] = {0x24, 0x6F, 0x28, 0xAB, 0xCD, 0xEF};  // MAC จาก test blink ของ GATEWAY
-const uint8_t WIFI_CHANNEL = 6;                                  // ช่องที่ gateway พิมพ์ออกมา
+const uint8_t WIFI_CHANNEL = 4;                                  // ช่องที่ gateway พิมพ์ออกมา
 const float CAL_FACTOR = 426.76f;                                // จาก 2.6
 // ========================
 

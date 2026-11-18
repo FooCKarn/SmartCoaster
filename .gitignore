@@ -2,6 +2,7 @@
 secrets.h
 **/secrets.h
 dashboard/config.js
+.firebaserc
 
 # build / editor
 build/
