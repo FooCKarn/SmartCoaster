@@ -77,32 +77,35 @@
         </div>
 
         <div class="hydration-metrics">
-          <span class="metric-label">Daily Goal Progress</span>
-          <div class="metric-big mono" id="pctText">67.5%</div>
-          <div class="metric-sub mono" id="mlText">1,350 / 2,000 ml</div>
-          <p class="remain-note" id="remainText">650 ml remaining to reach your goal</p>
+          <div class="goal-block">
+            <span class="metric-label goal-label">Daily Goal Progress</span>
+            <div class="metric-big mono" id="pctText">67.5%</div>
+            <div class="metric-sub mono" id="mlText">1,350 / 2,000 ml</div>
+            <p class="remain-note" id="remainText">650 ml remaining to reach your goal</p>
+          </div>
 
-          <div class="divider-h"></div>
-
-          <div class="metric-row">
-            <div>
-              <span class="metric-label">Last Drink</span>
-              <div class="metric-val mono" id="lastSipTime">14:20</div>
-            </div>
-            <div>
-              <span class="metric-label">Amount</span>
-              <div class="metric-val mono text-sky" id="lastSipMl">+45 ml</div>
-            </div>
-            <div>
-              <span class="metric-label">Coaster Weight</span>
-              <div class="metric-val mono" id="currentWeight">312.4 g</div>
+          <div class="metric-footer">
+            <div class="divider-h"></div>
+            <div class="metric-row">
+              <div>
+                <span class="metric-label">Last Drink</span>
+                <div class="metric-val mono" id="lastSipTime">14:20</div>
+              </div>
+              <div>
+                <span class="metric-label">Amount</span>
+                <div class="metric-val mono text-sky" id="lastSipMl">+45 ml</div>
+              </div>
+              <div>
+                <span class="metric-label">Coaster Weight</span>
+                <div class="metric-val mono" id="currentWeight">312.4 g</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Closed-loop status -->
+    <!-- Automatic Alert Status -->
     <div class="card hero-ai">
       <div class="card-header">
         <div>
@@ -115,49 +118,58 @@
         </div>
       </div>
 
-      <div class="ai-stack">
-        <!-- 1. Hydration risk -->
-        <div class="state-row border-yellow" id="aiCard">
-          <div class="state-badge bg-yellow" id="aiIconBox" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3s6 6.200 6 10.500A6 6 0 0 1 6 13.500C6 9.200 12 3 12 3z"/></svg>
+      <div class="ai-list">
+        <!-- 1. Hydration Risk -->
+        <div class="ai-item" id="aiCard">
+          <div class="ai-circle bg-yellow" id="aiIconBox" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3s6 6.2 6 10.5A6 6 0 0 1 6 13.5C6 9.2 12 3 12 3z"/></svg>
           </div>
-          <div class="state-info">
-            <div class="state-top">
-              <span class="state-tag">Hydration Risk</span>
-              <span class="state-code" id="aiScore">MODERATE</span>
+          <div class="ai-body">
+            <div class="ai-top-row">
+              <span class="ai-kicker">Hydration Risk</span>
+              <span class="ai-meta mono" id="aiRightBadge">
+                <i class="status-dot dot-yellow" id="aiDot"></i>
+                <span id="aiScore">MODERATE</span>
+              </span>
             </div>
-            <div class="state-title" id="aiStatusText">Drinking less water than usual</div>
-            <div class="state-sub" id="aiSubText">Room temperature 30°C · Humidity 67%</div>
+            <div class="ai-heading" id="aiStatusText">Drinking less water than usual</div>
+            <div class="ai-detail" id="aiSubText">Room temperature 30°C · Humidity 67%</div>
           </div>
         </div>
 
-        <!-- 2. Desk presence -->
-        <div class="state-row border-green" id="deskCard">
-          <div class="state-badge bg-green" id="deskIconBox" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.200"/><path d="M5.500 20c.6-3.600 3.200-5.600 6.500-5.600s5.900 2 6.500 5.600"/></svg>
+        <!-- 2. Desk Presence -->
+        <div class="ai-item" id="deskCard">
+          <div class="ai-circle bg-green" id="deskIconBox" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.6-3.6 3.2-5.6 6.5-5.6s5.9 2 6.5 5.6"/></svg>
           </div>
-          <div class="state-info">
-            <div class="state-top">
-              <span class="state-tag">Desk Presence</span>
-              <span class="state-code" id="presenceCode">PIR + HC-SR04</span>
+          <div class="ai-body">
+            <div class="ai-top-row">
+              <span class="ai-kicker">Desk Presence</span>
+              <span class="ai-meta mono">
+                <i class="status-dot dot-green" id="deskDot"></i>
+                <span id="presenceCode">PIR + HC-SR04</span>
+              </span>
             </div>
-            <div class="state-title" id="deskStatusText">At desk (alerts enabled)</div>
-            <div class="state-sub" id="deskSubText">Distance 20 cm · Room is quiet</div>
+            <div class="ai-heading" id="deskStatusText">At desk (alerts enabled)</div>
+            <div class="ai-detail" id="deskSubText">Distance 20 cm · Room is quiet</div>
           </div>
         </div>
 
-        <!-- 3. Alert -->
-        <div class="state-row border-green" id="alertCard">
-          <div class="state-badge bg-green" id="alertIconBox" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.500 2h-15L6 16z"/><path d="M10 20.500a2 2 0 0 0 4 0"/></svg>
+        <!-- 3. Notifications -->
+        <div class="ai-item" id="alertCard">
+          <div class="ai-circle bg-green" id="alertIconBox" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
           </div>
-          <div class="state-info">
-            <div class="state-top">
-              <span class="state-tag">Notifications</span>
-              <span class="state-code" id="alertCode">SG90 + LINE</span>
+          <div class="ai-body">
+            <div class="ai-top-row">
+              <span class="ai-kicker">Notifications</span>
+              <span class="ai-meta mono">
+                <i class="status-dot dot-green" id="alertDot"></i>
+                <span id="alertCode">SG90 + LINE</span>
+              </span>
             </div>
-            <div class="state-title" id="alertStatusText">System ready (alerts enabled)</div>
-            <div class="state-sub" id="alertSubText">SG90: Retracted | LINE: Sent if the flag stays raised for 15 minutes</div>
+            <div class="ai-heading" id="alertStatusText">System ready (alerts enabled)</div>
+            <div class="ai-detail" id="alertSubText">SG90: Retracted | LINE: Sent if the flag stays raised for 15 minutes</div>
           </div>
         </div>
       </div>
@@ -168,12 +180,12 @@
     <div class="card">
       <div class="card-header">
         <div>
-          <h3 class="card-title">Hourly Water Intake</h3>
-          <p class="card-desc">Water consumed (ml) each hour today</p>
+          <h3 class="card-title">Last 7 Days</h3>
+          <p class="card-desc">Daily water intake (ml) over the previous 7 days · dashed line = daily goal</p>
         </div>
       </div>
       <div class="chart-wrap">
-        <canvas id="chartHourly" height="120"></canvas>
+        <div class="hb" id="weekBars" role="img" aria-label="Daily water intake for the previous 7 days"></div>
       </div>
     </div>
 
@@ -193,6 +205,15 @@
   Daily goal: 2,000 ml · This information is for basic hydration tracking and is not medical advice.
 </footer>
 
+<script>
+  // If app.js never ran (e.g. opened as file://), say so instead of staying silent.
+  window.addEventListener("load", function () {
+    var s = document.getElementById("status");
+    if (s && s.textContent.trim() === "MOCK DATA MODE · coaster-01") {
+      s.textContent = "app.js did not run · open via http://localhost:8000 (python -m http.server 8000) and check the Console (F12)";
+    }
+  });
+</script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

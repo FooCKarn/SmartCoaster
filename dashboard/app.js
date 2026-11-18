@@ -10,6 +10,7 @@ import { firebaseConfig } from "./config.js";
 const $ = (id) => document.getElementById(id);
 const currentPage = document.body.dataset.page; // "dashboard" หรือ "sensors"
 const GOAL_ML = 2000;
+const SOUND_MAX_P2P = 500; // Scale reference สำหรับคำนวณ % เสียงของ KY-038
 
 // ============================================================================
 // 1. MOCK DATA (ข้อมูลจำลองสำหรับผู้ใช้คนเดียว: coaster-01)
@@ -20,7 +21,7 @@ const MOCK_DATA = {
   ts: Date.now(),
   weight_g: 312.4,
   dist_cm: 20,          // > 0 และ < 100 = อยู่ที่โต๊ะ (สีเขียว), -1 = ไม่อยู่ที่โต๊ะ (สีแดง)
-  batt_mv: 3910,        // ~80%
+  batt_mv: 3910,        // ~68%
   rssi: -54,
   room_t: 30,
   room_rh: 67,
@@ -28,6 +29,8 @@ const MOCK_DATA = {
   motion_count: 14,
   daily_ml: 1350,
   hourly_rate: 168,
+  week_ml: [1800, 2050, 1500, 1250, 1900, 2100, 1700], // ปริมาณน้ำ 7 วันก่อนหน้า (เก่าสุด -> เมื่อวาน) เป็น mock
+  pkts_retried: 95,     // แพ็กเก็ต ESP-NOW ที่ต้องส่งซ้ำ/เก็บคิว (E4) จากทั้งหมด seq
   last_sip_ts: Date.now() - 15 * 60 * 1000,
   last_sip_ml: 45,
   ai_risk: "moderate",  // "normal" (เขียว) | "moderate" (เหลือง) | "high" (แดง)
@@ -54,37 +57,11 @@ const MOCK_DATA = {
 // ============================================================================
 // 2. CHART INITIALIZATION
 // ============================================================================
-let chartHourly = null;
+const hasChart = typeof Chart !== "undefined"; // กันสคริปต์พังถ้า CDN ของ Chart.js โหลดไม่ได้
 let chartW = null;
 let chartRoom = null;
 
-if (currentPage === "dashboard" && $("chartHourly")) {
-  chartHourly = new Chart($("chartHourly"), {
-    type: "bar",
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: "Water intake (ml)",
-          data: [],
-          backgroundColor: "#0284c7",
-          borderRadius: 8,
-          barThickness: 28,
-        },
-      ],
-    },
-    options: {
-      animation: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: "#f1f5f9" } },
-        x: { grid: { display: false } },
-      },
-    },
-  });
-}
-
-if (currentPage === "sensors") {
+if (currentPage === "sensors" && hasChart) {
   if ($("chartW")) {
     chartW = new Chart($("chartW"), {
       type: "line",
@@ -102,6 +79,8 @@ if (currentPage === "sensors") {
         ],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         animation: false,
         plugins: { legend: { display: false } },
         scales: { y: { grid: { color: "#f1f5f9" } } },
@@ -139,21 +118,66 @@ if (currentPage === "sensors") {
   }
 }
 
-// Helper ตั้งค่าสีตามระดับการประเมิน (green | yellow | red)
-function setCardLevel(cardId, iconBoxId, level) {
-  $(cardId).className = `state-row border-${level}`;
-  $(iconBoxId).className = `state-badge bg-${level}`;
+// Helper ตั้งค่าสีให้วงกลมไอคอนและจุดสถานะด้านขวา (green | yellow | red)
+function setStatusRow(iconBoxId, dotId, level) {
+  const box = $(iconBoxId);
+  const dot = $(dotId);
+  if (box) box.className = `ai-circle bg-${level}`;
+  if (dot) dot.className = `status-dot dot-${level}`;
 }
 
 // ============================================================================
 // 3. UI RENDER FUNCTIONS
 // ============================================================================
+// กราฟแท่ง 7 วันก่อนหน้า (ไม่รวมวันนี้) พร้อมราง, เส้นเป้าหมาย และ tooltip
+function renderWeekBars(mlList) {
+  const el = $("weekBars");
+  if (!el) return;
+  if (!mlList.length) {
+    el.innerHTML = '<div class="hb-empty">No history yet</div>';
+    return;
+  }
+  const n = mlList.length;
+  const days = mlList.map((ml, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (n - i)); // i = n-1 -> เมื่อวาน
+    return {
+      ml,
+      short: d.toLocaleDateString("en-GB", { weekday: "short" }),
+      full: d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
+    };
+  });
+  const top = Math.ceil((Math.max(GOAL_ML, ...mlList) * 1.1) / 500) * 500;
+  const ticks = [];
+  for (let t = 0; t <= GOAL_ML; t += 1000) ticks.push(t);
+  const pos = (ml) => (ml / top) * 100;
+
+  el.innerHTML = `
+    <div class="hb-y">${ticks.map((t) => `<span style="bottom:${pos(t)}%">${t.toLocaleString()}</span>`).join("")}</div>
+    <div class="hb-main">
+      <div class="hb-plot">
+        ${ticks.map((t) => `<div class="hb-line" style="bottom:${pos(t)}%"></div>`).join("")}
+        <div class="hb-goal" style="bottom:${pos(GOAL_ML)}%"></div>
+        ${days.map((d) => `
+          <div class="hb-col" tabindex="0" style="--h:${pos(d.ml)}%" aria-label="${d.full}: ${d.ml} ml">
+            <div class="hb-track"><div class="hb-bar${d.ml >= GOAL_ML ? " met" : ""}"></div></div>
+            <div class="hb-tip" role="tooltip"><b class="mono">${d.full}</b><span class="mono">${d.ml.toLocaleString()} ml · ${Math.round((d.ml / GOAL_ML) * 100)}% of goal</span></div>
+          </div>`).join("")}
+      </div>
+      <div class="hb-xs">${days.map((d) => `<span>${d.short}</span>`).join("")}</div>
+    </div>`;
+}
+
 function renderDashboardPage(v) {
   const dailyMl = v.daily_ml ?? 0;
   const pct = Math.min(100, Math.round((dailyMl / GOAL_ML) * 1000) / 10);
+  const remain = Math.max(0, GOAL_ML - dailyMl);
 
   $("pctText").textContent = `${pct}%`;
   $("mlText").textContent = `${dailyMl.toLocaleString()} / ${GOAL_ML.toLocaleString()} ml`;
+  $("remainText").textContent = remain > 0
+    ? `${remain.toLocaleString()} ml remaining to reach your goal`
+    : "Daily goal reached!";
   $("waterLevel").style.height = `${pct}%`;
   $("hourlyRateBadge").textContent = `${v.hourly_rate ?? 150} ml/hr`;
   $("currentWeight").textContent = `${Number(v.weight_g).toFixed(1)} g`;
@@ -168,67 +192,63 @@ function renderDashboardPage(v) {
   $("lastSipMl").textContent = v.last_sip_ml ? `+${v.last_sip_ml} ml` : "–";
 
   // --------------------------------------------------------------------------
-  // การ์ด 1: AI Hydration Risk (เขียว = ปกติ, เหลือง = เริ่มดื่มน้อย, แดง = เสี่ยงขาดน้ำสูง)
+  // Row 1: Hydration Risk (เขียว = ปกติ, เหลือง = เริ่มดื่มน้อย, แดง = เสี่ยงขาดน้ำสูง)
   // --------------------------------------------------------------------------
   const risk = v.ai_risk || (pct >= 75 ? "normal" : pct >= 50 ? "moderate" : "high");
   if (risk === "normal") {
-    setCardLevel("aiCard", "aiIconBox", "green");
+    setStatusRow("aiIconBox", "aiDot", "green");
     $("aiScore").textContent = "NORMAL";
-    $("aiStatusText").textContent = "Normal hydration (on track)";
+    $("aiStatusText").textContent = "Hydration on track";
   } else if (risk === "moderate") {
-    setCardLevel("aiCard", "aiIconBox", "yellow");
+    setStatusRow("aiIconBox", "aiDot", "yellow");
     $("aiScore").textContent = "MODERATE";
     $("aiStatusText").textContent = "Drinking less water than usual";
   } else {
-    setCardLevel("aiCard", "aiIconBox", "red");
+    setStatusRow("aiIconBox", "aiDot", "red");
     $("aiScore").textContent = "HIGH RISK";
-    $("aiStatusText").textContent = "High dehydration risk (drink water now)";
+    $("aiStatusText").textContent = "High dehydration risk (drink now)";
   }
   $("aiSubText").textContent = `Room temperature ${Math.round(v.room_t)}°C · Humidity ${Math.round(v.room_rh)}%`;
 
   // --------------------------------------------------------------------------
-  // การ์ด 2: Desk Presence (เขียว = อยู่ที่โต๊ะ, เหลือง = อยู่แต่ใช้เสียง/ประชุม, แดง = ไม่อยู่ที่โต๊ะ)
+  // Row 2: Desk Presence (เขียว = อยู่ที่โต๊ะ, เหลือง = คุย/เสียงดัง, แดง = ไม่อยู่)
   // --------------------------------------------------------------------------
   const atDesk = v.dist_cm > 0 && v.dist_cm < 100;
   const isNoisy = (v.sound_p2p ?? 0) > 300;
   if (!atDesk) {
-    setCardLevel("deskCard", "deskIconBox", "red");
+    setStatusRow("deskIconBox", "deskDot", "red");
     $("deskStatusText").textContent = "Away from desk (alerts disabled)";
-    $("deskSubText").textContent = "No ultrasonic presence detected at the desk";
+    $("deskSubText").textContent = "No ultrasonic presence detected";
   } else if (isNoisy) {
-    setCardLevel("deskCard", "deskIconBox", "yellow");
-    $("deskStatusText").textContent = "At desk (alerts temporarily paused)";
-    $("deskSubText").textContent = `Distance ${Math.round(v.dist_cm)} cm · Conversation detected`;
+    setStatusRow("deskIconBox", "deskDot", "yellow");
+    $("deskStatusText").textContent = "At desk · In conversation (alerts paused)";
+    $("deskSubText").textContent = `Distance ${Math.round(v.dist_cm)} cm · Room is noisy (${v.sound_p2p} p2p)`;
   } else {
-    setCardLevel("deskCard", "deskIconBox", "green");
+    setStatusRow("deskIconBox", "deskDot", "green");
     $("deskStatusText").textContent = "At desk (alerts enabled)";
     $("deskSubText").textContent = `Distance ${Math.round(v.dist_cm)} cm · Room is quiet`;
   }
 
   // --------------------------------------------------------------------------
-  // การ์ด 3: Notification & Actuator (เขียว = ปกติ, เหลือง = ยกป้ายเตือน, แดง = ส่ง LINE แล้ว)
+  // Row 3: Notifications (เขียว = ปกติ, เหลือง = ยกป้ายเตือน, แดง = ส่ง LINE แล้ว)
   // --------------------------------------------------------------------------
   const alertState = v.alert_state || (v.servo_up ? "servo_up" : "idle");
   if (alertState === "idle") {
-    setCardLevel("alertCard", "alertIconBox", "green");
+    setStatusRow("alertIconBox", "alertDot", "green");
     $("alertStatusText").textContent = "System ready (alerts enabled)";
     $("alertSubText").textContent = "SG90: Retracted | LINE: Sent if the flag stays raised for 15 minutes";
   } else if (alertState === "servo_up") {
-    setCardLevel("alertCard", "alertIconBox", "yellow");
-    $("alertStatusText").textContent = "Raising SG90 reminder flag!";
-    $("alertSubText").textContent = "Drink water within 15 minutes to prevent a LINE notification";
+    setStatusRow("alertIconBox", "alertDot", "yellow");
+    $("alertStatusText").textContent = "Reminder flag raised (waiting for sip)";
+    $("alertSubText").textContent = "SG90: Raised | LINE: Will send if unheeded for 15 minutes";
   } else {
-    setCardLevel("alertCard", "alertIconBox", "red");
-    $("alertStatusText").textContent = "LINE notification sent!";
-    $("alertSubText").textContent = "No drink detected after 15 minutes (30-minute cooldown)";
+    setStatusRow("alertIconBox", "alertDot", "red");
+    $("alertStatusText").textContent = "LINE alert sent (30m cooldown)";
+    $("alertSubText").textContent = "SG90: Raised | LINE: Notification delivered";
   }
 
   // Hourly Chart
-  if (chartHourly && v.hourly_labels) {
-    chartHourly.data.labels = v.hourly_labels;
-    chartHourly.data.datasets[0].data = v.hourly_ml;
-    chartHourly.update();
-  }
+  renderWeekBars(v.week_ml || []);
 
   // Sip History Log
   if ($("sipLogList") && v.sips) {
@@ -247,7 +267,29 @@ function renderDashboardPage(v) {
   }
 }
 
+// E4: สัดส่วนแพ็กเก็ต ESP-NOW ที่ได้ ACK ในครั้งแรก เทียบกับที่ต้องส่งซ้ำ/เก็บคิว
+function renderLinkSplit(v) {
+  if (!$("lnkRow")) return;
+  const total = v.seq ?? 0;
+  const retried = v.pkts_retried;
+  if (!total || retried == null) {
+    $("lnkTotal").textContent = "No data";
+    return;
+  }
+  const ok = Math.max(0, total - retried);
+  const okPct = Math.round((ok / total) * 1000) / 10;
+  const rtPct = Math.round((retried / total) * 1000) / 10;
+  $("lnkTotal").textContent = `${total.toLocaleString()} packets`;
+  $("lnkOkPct").textContent = okPct;
+  $("lnkRtPct").textContent = rtPct;
+  $("lnkOkN").textContent = `${ok.toLocaleString()} packets`;
+  $("lnkRtN").textContent = `${retried.toLocaleString()} packets`;
+  $("lnkRow").style.setProperty("--am", `${Math.max(okPct, 1)}fr`);
+  $("lnkRow").style.setProperty("--pm", `${Math.max(rtPct, 1)}fr`);
+}
+
 function renderSensorsPage(v, historyRows = []) {
+  renderLinkSplit(v);
   $("w").textContent = `${Number(v.weight_g).toFixed(1)} g`;
   $("d").textContent = v.dist_cm < 0 ? "no echo" : `${Math.round(v.dist_cm)} cm`;
   $("dDesc").textContent =
@@ -255,17 +297,28 @@ function renderSensorsPage(v, historyRows = []) {
   $("t").textContent = `${Math.round(v.room_t)} °C`;
   $("rh").textContent = `${Math.round(v.room_rh)} %`;
   $("snd").textContent = `${v.sound_p2p ?? 0} p2p`;
+  // ระดับเสียง: Quiet < 100 | Normal 100-300 | Loud > 300 p2p (เกิน 300 = เลื่อนแจ้งเตือน)
+  const sndP2p = v.sound_p2p ?? 0;
+  const sndPct = Math.min(100, Math.max(0, Math.round((sndP2p / SOUND_MAX_P2P) * 100)));
+  $("sndBar").style.width = `${sndPct}%`;
+  $("sndBar").classList.toggle("is-loud", sndP2p > 300);
   $("sndState").textContent =
-    (v.sound_p2p ?? 0) > 300 ? "Loud sound / conversation (alerts paused)" : "Normal sound (alerts enabled)";
+    sndP2p > 300 ? "Loud sound / conversation (alerts paused)"
+    : sndP2p < 100 ? "Quiet room (alerts enabled)"
+    : "Normal sound (alerts enabled)";
+  const rhPct = Math.min(100, Math.max(0, Math.round(v.room_rh ?? 0)));
+  $("rhBar").style.width = `${rhPct}%`;
   $("rssi").textContent = `${v.rssi} dBm`;
   $("pirCount").textContent = `PIR ISR Interrupts: ${v.motion_count}`;
 
   if (v.batt_mv > 0) {
     const battPct = Math.min(100, Math.max(0, Math.round(((v.batt_mv - 3300) / (4200 - 3300)) * 100)));
     $("batt").textContent = `${battPct} %`;
+    $("battBar").style.width = `${battPct}%`;
     $("battMv").textContent = `${v.batt_mv.toLocaleString()} mV · Deep Sleep 10s`;
   } else {
     $("batt").textContent = "– %";
+    $("battBar").style.width = "0%";
     $("battMv").textContent = "Not yet measured (batt_mv = 0)";
   }
 

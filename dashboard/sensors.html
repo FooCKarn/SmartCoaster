@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smart Coaster · Node & Gateway Telemetry</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -12,16 +14,18 @@
 
 <header class="topbar">
   <div class="brand-group">
-    <div class="brand-icon">💧</div>
+    <div class="brand-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 2.5s6.5 6.6 6.5 11.4a6.5 6.5 0 0 1-13 0C5.5 9.100 12 2.500 12 2.500z"/></svg>
+    </div>
     <div>
-      <div class="brand-title">Smart Coaster <span class="badge-edge">HARDWARE TELEMETRY</span></div>
-      <div class="brand-sub">ESP32 Sensor Node &amp; Gateway Diagnostics (E1–E5)</div>
+      <div class="brand-title">Smart Coaster <span class="badge-edge">Edge AI</span></div>
+      <div class="brand-sub">A smart coaster to help you stay hydrated throughout the day</div>
     </div>
   </div>
 
   <div class="controls">
-    <div class="node-pill" title="Connected node">
-      <span class="select-label">NODE</span>
+    <div class="node-pill" title="Connected device">
+      <span class="select-label">Device</span>
       <span class="mono node-name">coaster-01</span>
     </div>
 
@@ -33,6 +37,8 @@
 </header>
 
 <main class="container">
+  <h1 class="sr-only">Smart Coaster Sensors &amp; System</h1>
+
   <div class="telemetry-bar">
     <div class="telemetry-left">
       <span class="pulse-dot" id="connDot"></span>
@@ -47,7 +53,7 @@
 
   <!-- Top Section: Load Cell Real-time Chart + 6 Sensor Cards -->
   <section class="sensor-layout">
-    <div class="card">
+    <div class="card sensor-chart-card">
       <div class="card-header">
         <div>
           <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
@@ -55,8 +61,8 @@
         </div>
         <span class="weight-badge mono" id="w">312.4 g</span>
       </div>
-      <div class="chart-wrap">
-        <canvas id="chartW" height="175"></canvas>
+      <div class="chart-wrap sensor-chart-wrap">
+        <canvas id="chartW"></canvas>
       </div>
     </div>
 
@@ -64,61 +70,77 @@
       <!-- 1. Distance -->
       <div class="mini-card accent-red">
         <div class="mini-top">
-          <small>ULTRASONIC (HC-SR04)</small>
+          <small>ULTRASONIC · HC-SR04</small>
           <span class="node-tag">NODE</span>
         </div>
-        <b class="mono" id="d">20 cm</b>
-        <span id="dDesc">User detected at desk (&lt; 100 cm)</span>
+        <div class="mini-body">
+          <b class="mono" id="d">20 cm</b>
+        </div>
+        <span class="mini-foot" id="dDesc">User detected at desk (&lt; 100 cm)</span>
       </div>
 
       <!-- 2. Battery -->
       <div class="mini-card accent-green">
         <div class="mini-top">
-          <small>BATTERY 18650 (E3)</small>
+          <small>BATTERY 18650 · E3</small>
           <span class="node-tag">NODE</span>
         </div>
-        <b class="mono" id="batt">80 %</b>
-        <span class="mono" id="battMv">3,910 mV · Deep Sleep 10s</span>
+        <div class="mini-body">
+          <b class="mono" id="batt">68 %</b>
+          <div class="mini-bar"><div class="mini-bar-fill" id="battBar" style="width: 68%;"></div></div>
+        </div>
+        <span class="mini-foot mono" id="battMv">3,910 mV · Deep Sleep 10s</span>
       </div>
 
       <!-- 3. Temperature -->
       <div class="mini-card accent-yellow">
         <div class="mini-top">
-          <small>TEMPERATURE (DHT11)</small>
+          <small>TEMPERATURE · DHT11</small>
           <span class="gw-tag">GATEWAY</span>
         </div>
-        <b class="mono" id="t">30 °C</b>
-        <span>Used to estimate hydration needs</span>
+        <div class="mini-body">
+          <b class="mono" id="t">30 °C</b>
+        </div>
+        <span class="mini-foot">Used to estimate hydration needs</span>
       </div>
 
       <!-- 4. Humidity -->
       <div class="mini-card accent-blue">
         <div class="mini-top">
-          <small>HUMIDITY (DHT11)</small>
+          <small>HUMIDITY · DHT11</small>
           <span class="gw-tag">GATEWAY</span>
         </div>
-        <b class="mono" id="rh">67 %</b>
-        <span>Relative humidity in the room</span>
+        <div class="mini-body">
+          <b class="mono" id="rh">67 %</b>
+          <div class="mini-bar"><div class="mini-bar-fill" id="rhBar" style="width: 67%;"></div></div>
+        </div>
+        <span class="mini-foot">Relative humidity in the room</span>
       </div>
 
       <!-- 5. Sound -->
       <div class="mini-card accent-yellow">
         <div class="mini-top">
-          <small>SOUND LEVEL (KY-038)</small>
+          <small>SOUND LEVEL · KY-038</small>
           <span class="gw-tag">GATEWAY</span>
         </div>
-        <b class="mono" id="snd">120 p2p</b>
-        <span id="sndState">Normal sound (alerts enabled)</span>
+        <div class="mini-body">
+          <b class="mono" id="snd">120 p2p</b>
+          <div class="mini-bar zones"><div class="mini-bar-fill" id="sndBar" style="width: 24%;"></div></div>
+          <div class="snd-scale"><span>Quiet</span><span>Normal</span><span>Loud</span></div>
+        </div>
+        <span class="mini-foot" id="sndState">Normal sound (alerts enabled)</span>
       </div>
 
       <!-- 6. Signal & PIR ISR -->
       <div class="mini-card accent-blue">
         <div class="mini-top">
-          <small>ESP-NOW RSSI &amp; PIR (E2)</small>
+          <small>ESP-NOW RSSI &amp; PIR · E2</small>
           <span class="gw-tag">GATEWAY</span>
         </div>
-        <b class="mono" id="rssi">-54 dBm</b>
-        <span class="mono" id="pirCount">PIR ISR Interrupts: 14</span>
+        <div class="mini-body">
+          <b class="mono" id="rssi">-54 dBm</b>
+        </div>
+        <span class="mini-foot mono" id="pirCount">PIR ISR Interrupts: 14</span>
       </div>
     </div>
   </section>
