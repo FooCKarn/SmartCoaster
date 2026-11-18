@@ -12,11 +12,11 @@ const float CAL_FACTOR = 426.76f;                                // จาก 2.
 // ========================
 
 // ===== โหมดน้ำหนักจำลอง (ระหว่างรอเปลี่ยน load cell / HX711) =====
-// 1 = ไม่แตะ HX711 เลย ใช้น้ำหนักจำลองแทน (HC-SR04 ยังอ่านค่าจริง)
-// 0 = ใช้ load cell จริง (เปลี่ยนกลับเป็น 0 เมื่อได้ของใหม่และใส่ CAL_FACTOR แล้ว)
+// 0 = ใช้ load cell จริง (ค่าเริ่มต้น ตอนนี้ load cell ใช้ได้แล้ว)
+// 1 = ไม่แตะ HX711 เลย ใช้น้ำหนักจำลองแทน (HC-SR04 ยังอ่านค่าจริง) ไว้เทสเมื่อ load cell มีปัญหา
 // PlatformIO: ใส่ -DMOCK_WEIGHT=0 ใน build_flags ของ env:node ก็ได้
 #ifndef MOCK_WEIGHT
-#define MOCK_WEIGHT 1
+#define MOCK_WEIGHT 0
 #endif
 const float    MOCK_FULL_G  = 350.0f;          // แก้วเต็ม (แก้ว + น้ำ)
 const float    MOCK_EMPTY_G = 120.0f;          // แก้วเปล่า ต่ำกว่านี้ = เติมน้ำใหม่อัตโนมัติ

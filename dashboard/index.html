@@ -15,6 +15,10 @@
     .card small { color: #666; }
     .card b { display: block; font-size: 1.6em; margin-top: 4px; }
     .chart-box { background: #fff; border-radius: 10px; padding: 12px; margin-top: 16px; box-shadow: 0 1px 2px #0001; }
+    .card.hi { background: #fff4d6; }
+    .card.alert { background: #ffe1e1; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #eee; font-size: .95em; }
   </style>
 </head>
 <body>
@@ -22,6 +26,10 @@
   <div id="status">กำลังเชื่อมต่อ Firebase…</div>
 
   <div class="cards">
+    <div class="card hi"><small>ดื่มวันนี้</small><b id="today">–</b></div>
+    <div class="card hi"><small>ดื่มครั้งล่าสุด</small><b id="since">–</b></div>
+    <div class="card hi" id="aiCard"><small>AI ความเสี่ยงดื่มน้อย</small><b id="aip">–</b></div>
+    <div class="card hi" id="signCard"><small>ป้ายเตือน</small><b id="sign">–</b></div>
     <div class="card"><small>น้ำหนักแก้ว</small><b id="w">–</b></div>
     <div class="card"><small>ระยะ (ultrasonic)</small><b id="d">–</b></div>
     <div class="card"><small>อุณหภูมิห้อง</small><b id="t">–</b></div>
@@ -34,6 +42,10 @@
 
   <div class="chart-box"><canvas id="chartW" height="110"></canvas></div>
   <div class="chart-box"><canvas id="chartRoom" height="90"></canvas></div>
+  <div class="chart-box">
+    <b>การดื่มล่าสุด</b>
+    <table><thead><tr><th>เวลา</th><th>ปริมาณ</th><th>รวมวันนี้</th></tr></thead><tbody id="drinks"></tbody></table>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -67,6 +79,12 @@
       $("mot").textContent  = fmt(v.motion_count, 0, "");
       $("rssi").textContent = fmt(v.rssi, 0, " dBm");
       $("ts").textContent   = time(v.ts);
+      $("today").textContent = fmt(v.ml_today, 0, " ml");
+      $("since").textContent = typeof v.mins_since_drink === "number" ? v.mins_since_drink.toFixed(0) + " นาทีก่อน" : "–";
+      $("aip").textContent   = typeof v.ai_p === "number" ? (v.ai_p * 100).toFixed(0) + " %" : "–";
+      $("aiCard").className  = "card " + (v.ai_p >= 0.6 ? "alert" : "hi");
+      $("sign").textContent  = v.estop ? "หยุดฉุกเฉิน" : (v.sign_up ? "ยกขึ้น ⬆" : "ลง ⬇");
+      $("signCard").className = "card " + (v.sign_up || v.estop ? "alert" : "hi");
       status(`node ${v.node_id} · seq ${v.seq}`);
     }, err => status("อ่าน Firebase ไม่ได้: " + err.message, true));
 
@@ -74,8 +92,11 @@
     const opts = { animation: false, interaction: { mode: "index", intersect: false } };
     const chartW = new Chart($("chartW"), {
       type: "line",
-      data: { labels: [], datasets: [{ label: "น้ำหนักบนแท่น (g)", data: [], tension: 0.2 }] },
-      options: opts
+      data: { labels: [], datasets: [
+        { label: "น้ำหนักบนแท่น (g)", data: [], tension: 0.2, yAxisID: "y" },
+        { label: "AI ความเสี่ยง (%)", data: [], tension: 0.2, yAxisID: "y1", borderDash: [4, 3] }
+      ] },
+      options: { ...opts, scales: { y: { position: "left" }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false } } } }
     });
     const chartRoom = new Chart($("chartRoom"), {
       type: "line",
@@ -91,11 +112,20 @@
       const labels = rows.map(r => time(r.ts));
       chartW.data.labels = labels;
       chartW.data.datasets[0].data = rows.map(r => r.weight_g);
+      chartW.data.datasets[1].data = rows.map(r => typeof r.ai_p === "number" ? r.ai_p * 100 : null);
       chartW.update();
       chartRoom.data.labels = labels;
       chartRoom.data.datasets[0].data = rows.map(r => r.room_t);
       chartRoom.data.datasets[1].data = rows.map(r => r.room_rh);
       chartRoom.update();
+    });
+
+    // ---- ตารางการดื่ม 10 ครั้งล่าสุด ----
+    onValue(query(ref(db, "drinks"), limitToLast(10)), s => {
+      const rows = Object.values(s.val() || {}).reverse();
+      $("drinks").innerHTML = rows.length
+        ? rows.map(r => `<tr><td>${time(r.ts)}</td><td>${fmt(r.ml, 0, " ml")}</td><td>${fmt(r.ml_today, 0, " ml")}</td></tr>`).join("")
+        : `<tr><td colspan="3">ยังไม่มีการดื่ม</td></tr>`;
     });
   </script>
 </body>
