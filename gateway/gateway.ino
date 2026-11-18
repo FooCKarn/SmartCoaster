@@ -30,8 +30,8 @@ const int SERVO_PIN = 18, STOP_BTN = 33, LED = 2;
 #ifndef DEMO_SPEED
 #define DEMO_SPEED 1
 #endif
-const float    AI_P_UP        = 0.60f;  // ความเสี่ยง ≥ นี้ → ยกป้าย
-const float    AI_P_DOWN      = 0.52f;  // ความเสี่ยง ≤ นี้ → ลดป้าย (ห่างกันไว้กันป้ายกระพือ)
+const float    AI_P_UP        = 0.70f;  // ความเสี่ยง ≥ นี้ → ยกป้าย (บนชุด test: ป้ายยก ~27 % ของเวลา, ถูก 72 %)
+const float    AI_P_DOWN      = 0.62f;  // ความเสี่ยง ≤ นี้ → ลดป้าย (ห่างกันไว้กันป้ายกระพือ)
 const float    HOLD_DOWN_MIN  = 15;     // ดื่มแล้ว ป้ายลงค้างอย่างน้อยกี่นาที
 const float    LINE_AFTER_MIN = 10;     // ป้ายยกค้างกี่นาทีแล้วยังไม่ดื่ม → ส่ง LINE
 const uint32_t LINE_COOLDOWN_MS = 30UL * 60UL * 1000UL;  // ส่ง LINE ห่างกันอย่างน้อย 30 นาที (เวลาจริง กันโควตาหมด)

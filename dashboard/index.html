@@ -139,7 +139,7 @@
       $("today").textContent = fmt(v.ml_today, 0, " ml");
       $("since").textContent = typeof v.mins_since_drink === "number" ? v.mins_since_drink.toFixed(0) + " นาทีก่อน" : "–";
       $("aip").textContent   = typeof v.ai_p === "number" ? (v.ai_p * 100).toFixed(0) + " %" : "–";
-      $("aiCard").className  = "card " + (v.ai_p >= 0.6 ? "alert" : "hi");
+      $("aiCard").className  = "card " + (v.ai_p >= 0.7 ? "alert" : "hi");
       $("sign").textContent  = v.estop ? "หยุดฉุกเฉิน" : (v.sign_up ? "ยกขึ้น ⬆" : "ลง ⬇");
       $("signCard").className = "card " + (v.sign_up || v.estop ? "alert" : "hi");
       status(`node ${v.node_id} · seq ${v.seq}`);
