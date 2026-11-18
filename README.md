@@ -3,8 +3,11 @@
 แผ่นรองแก้วเตือนดื่มน้ำ · CEDT Embedded System Final Project 2026
 
 แผ่นรองแก้ว (**node**) ชั่งน้ำหนักแก้วและวัดระยะ แล้วส่งให้กล่องป้าย (**gateway**) ผ่าน ESP-NOW
-gateway อ่านสภาพห้อง (อุณหภูมิ/ความชื้น, เสียง, คนเดินผ่าน) แล้วส่งทั้งหมดขึ้น Firebase
-และสั่งเซอร์โวยกป้ายเตือนเมื่อควรดื่มน้ำ
+gateway อ่านสภาพห้อง (อุณหภูมิ/ความชื้น, เสียง, คนเดินผ่าน) ตรวจจับการดื่ม ให้ AI ประเมินความเสี่ยงว่าจะดื่มน้อย
+แล้วสั่งเซอร์โวยกป้ายเตือน + ส่ง LINE และส่งข้อมูลทั้งหมดขึ้น Firebase
+
+- การดื่ม / AI / LINE / โหมดเร่งเวลาถ่ายวิดีโอ: [docs/ai-and-drinks.md](docs/ai-and-drinks.md)
+- E5 ความปลอดภัย (ต้องตั้งค่า Firebase เอง): [docs/security-e5.md](docs/security-e5.md)
 
 ![block diagram](docs/block-diagram.png)
 
@@ -38,10 +41,12 @@ gateway อ่านสภาพห้อง (อุณหภูมิ/ควา
 │   ├── t06_ultrasonic/     node
 │   ├── t07_hx711_cal/      node: หา CAL_FACTOR
 │   ├── t08_hx711_weigh/    node: ชั่งจริง
-│   └── t10_line/           gateway: ทดสอบ LINE broadcast
+│   ├── t10_line/           gateway: ทดสอบ LINE broadcast
+│   └── t12_tls/            gateway: ทดสอบตรวจ certificate (E5)
+├── ai/                 train.py เทรนโมเดล AI → gateway/ai_model.h
 ├── common/             รูปแบบข้อความ ESP-NOW และ LINE helper (ต้นฉบับ)
 ├── node/               firmware node (อ่านน้ำหนัก+ระยะ → ESP-NOW)
-├── gateway/            firmware gateway (รับ ESP-NOW + เซนเซอร์ห้อง → Firebase)
+├── gateway/            firmware gateway: FreeRTOS tasks, ตรวจการดื่ม, AI, servo, LINE, Firebase
 ├── dashboard/          หน้าเว็บ Chart.js อ่านจาก Firebase
 ├── firebase/           database rules (test mode / แบบล็อกอิน)
 └── docs/               รูปวงจร, ตารางขา, calibration log
@@ -91,18 +96,23 @@ PlatformIO ดาวน์โหลด framework และไลบรารี�
 1. คัดลอก `gateway/secrets.example.h` เป็น `gateway/secrets.h` แล้วใส่ Wi-Fi (2.4 GHz), URL ของ Firebase RTDB และ LINE credentials
 2. อัปโหลด `gateway/gateway.ino` จด `WiFi channel = X` ที่พิมพ์ออกมา
 
-ทดสอบ LINE broadcast ได้จาก Serial Monitor: พิมพ์ `m` เพื่อส่งข้อความจริง
-ถึงเพื่อนทุกคนของบอท (อาจใช้โควตา LINE; สำเร็จแล้วจะพัก 30 นาที) หรือ `q` เพื่อดูจำนวนข้อความที่ใช้
-คำสั่งนี้เป็นเพียงตัวทดสอบ ยังไม่มีระบบตรวจจับการดื่มอัตโนมัติ
+คำสั่ง Serial ของ gateway: `a` ดูค่า AI, `s` สถานะ (คิว/flash/heap), `u`/`n` ยก/ลดป้าย, `c` ปลด e-stop,
+`m` ส่ง LINE ทดสอบ (ใช้โควตาจริง), `q` ดูโควตา LINE
+LINE อัตโนมัติจะส่งเมื่อ AI ยกป้ายค้างไว้ 10 นาทีแล้วยังไม่ดื่ม (ห่างกันอย่างน้อย 30 นาที)
 
 ### 4. Node
 แก้ 3 ค่าบนสุดของ `node/node.ino`: `GATEWAY_MAC`, `WIFI_CHANNEL`, `CAL_FACTOR` แล้วอัปโหลด
-gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินาที
+gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินาที และ node พิมพ์ `acked=` เพิ่มขึ้นเรื่อย ๆ
 
-**ยังไม่มี load cell?** `MOCK_WEIGHT` ใน `node/node.ino` ตั้งเป็น `1` ไว้ก่อน node จะไม่แตะ HX711 และส่งน้ำหนักจำลอง
+**E4 ACK:** node เก็บทุกค่าลงคิว (60 ค่า = 5 นาที) แล้วลบออกเมื่อ gateway ตอบ ACK เท่านั้น
+ถอดไฟ gateway สักพักแล้วเสียบกลับ → node จะส่งค่าที่ค้างตามไปเอง (`queued=` ลดลง) ฝั่ง gateway ถ้าเน็ตล่ม
+จะเก็บลง flash (`/queue.txt`) แล้วส่งตามเมื่อเน็ตกลับ ดูได้จากคำสั่ง `s`
+
+> **อัปเดตทั้งสองบอร์ดพร้อมกัน** รูปแบบข้อความเปลี่ยนเป็นเวอร์ชัน 2 แล้ว node เก่ากับ gateway ใหม่คุยกันไม่ได้
+
+**load cell มีปัญหา?** ตั้ง `MOCK_WEIGHT` ใน `node/node.ino` เป็น `1` node จะไม่แตะ HX711 และส่งน้ำหนักจำลอง
 (เริ่ม 350 g ลดทีละ 25 g ทุก 1 นาที) ส่วน HC-SR04 ยังอ่านค่าจริง สั่งผ่าน Serial Monitor ได้:
 `d` จิบ, `r` เติมน้ำ, `l` ยกแก้ว, `p` วางแก้ว, `w280` ตั้งน้ำหนักเอง
-ได้ load cell ใหม่แล้วให้เปลี่ยนเป็น `0` (ถ้า HX711 ไม่ตอบ node จะส่ง `weight_g` เป็น NaN แทนการค้าง)
 
 > `msg.h` ต้องเหมือนกันทั้งสองฝั่ง ถ้าแก้ ให้แก้ที่ `common/msg.h` แล้วคัดลอกไปทับ `node/msg.h` และ `gateway/msg.h`
 > (Arduino IDE ไม่ยอม include ไฟล์นอกโฟลเดอร์ sketch)
@@ -116,9 +126,12 @@ gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินา�
 
 ข้อมูลใน RTDB:
 ```
-/readings/<auto-id>   ทุกค่าที่ gateway ได้รับ: node_id, seq, weight_g, dist_cm, batt_mv, rssi,
-                      room_t, room_rh, sound_p2p, motion_count, ts
-/latest               ค่าล่าสุด (dashboard ใช้แสดงการ์ด)
+/readings/<ts>-<node>-<seq>  ทุกค่าที่ gateway ได้รับ: node_id, seq, weight_g, dist_cm, batt_mv, rssi, age_ms,
+                             room_t, room_rh, sound_p2p, motion_count, cup, ml_today, mins_since_drink,
+                             ai_p, ai_x[7], sign_up, estop, ts (demo: true เมื่อเปิดโหมดเร่งเวลา)
+/latest                      ค่าล่าสุด (dashboard ใช้แสดงการ์ด)
+/drinks/<key>                การดื่มแต่ละครั้ง: ml, ml_today, ts  (ข้อมูลเทรน AI)
+/refills/<key>               การเติมน้ำ
 ```
 
 แผนพัฒนาเพื่อแยก coaster และข้อมูลตามผู้ใช้ Firebase:
@@ -130,19 +143,22 @@ gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินา�
 ไฟล์ `.firebaserc` เป็นค่าเลือก Firebase project เฉพาะเครื่องและถูก ignore ด้วย
 ให้ commit เฉพาะไฟล์ตัวอย่าง `*.example` ที่เป็นค่าปลอม
 
-## ความปลอดภัย (หลัง checkpoint, E5)
-- เปลี่ยน rules จาก `firebase/database.rules.test-mode.json` เป็น `firebase/database.rules.json` (ใส่ UID บัญชี gateway)
-- gateway ล็อกอินด้วย Firebase Auth REST แล้วใส่ `idToken` ใน `DB_AUTH`
-- เลิกใช้ `setInsecure()` ใส่ root CA ด้วย `client.setCACert(...)`
+## ความปลอดภัย (E5)
+โค้ดพร้อมแล้ว (ตรวจ cert ด้วย root CA + gateway ล็อกอิน Firebase Auth + dashboard ล็อกอิน)
+ต้องตั้งค่าใน Firebase console เอง ทำตาม [docs/security-e5.md](docs/security-e5.md)
 
-## สิ่งที่ยังต้องทำ (หลัง checkpoint 20 พ.ย.)
-- [ ] ตรวจจับการดื่ม (น้ำหนักลด > 20 g แล้วนิ่ง) เก็บที่ `/drinks`
-- [ ] AI แบบ closed loop บน gateway → ยกป้ายด้วยเซอร์โว
-- [ ] แจ้งเตือนผ่าน LINE Messaging API จากระบบตรวจจับ/กฎเตือนอัตโนมัติ
-  (มีเฉพาะ mock trigger ด้วย Serial `m` ใน gateway)
-- [ ] FreeRTOS task + queue บน gateway (E1), deep sleep node (E3), ACK + คิวตอนเน็ตล่ม (E4)
-- [ ] ไฟแบตของ node: 18650 → TP4056 → LDO 3.3 V, วัดแบตที่ GPIO34
+## สถานะงาน
+- [x] ตรวจจับการดื่ม เก็บที่ `/drinks`
+- [x] AI (logistic regression) บน gateway → ยกป้ายด้วยเซอร์โว (closed loop)
+- [x] LINE อัตโนมัติเมื่อป้ายยกค้างแล้วยังไม่ดื่ม
+- [x] E1 FreeRTOS task + queue บน gateway
+- [x] E2 interrupt: PIR + ปุ่มหยุดฉุกเฉิน
+- [x] E4 ACK ระดับแอป + คิวบน node + คิวบน flash ของ gateway ตอนเน็ตล่ม
+- [x] E5 โค้ดตรวจ cert + Firebase Auth (เหลือตั้งค่า console เอง)
+- [ ] เทรน AI ใหม่ด้วยข้อมูลจริง (`ai/train.py --firebase`)
+- [ ] E3 deep sleep node + ไฟแบต 18650 → TP4056 → LDO 3.3 V, วัดแบตที่ GPIO34
 
 ## การทดสอบ
-โค้ดยังไม่ได้คอมไพล์บนบอร์ดจริง ถ้าคอมไพล์ฟ้องที่ `onSent` ใน `node/node.ino` ให้สลับไปใช้อีกบรรทัดในบล็อก `#if`
+โค้ดของ gateway/node รุ่นนี้ตรวจ syntax บนคอมแล้ว แต่ยังไม่ได้คอมไพล์ด้วย ESP32 core จริง
+ตัวตรวจจับการดื่มทดสอบ logic บนคอมแล้ว ถ้าคอมไพล์ฟ้องที่ `onSent` ใน `node/node.ino` ให้สลับไปใช้อีกบรรทัดในบล็อก `#if`
 (core แต่ละเวอร์ชันใช้ signature ต่างกัน)
