@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Coaster · Node & Gateway Telemetry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body data-page="sensors">
+
+<header class="topbar">
+  <div class="brand-group">
+    <div class="brand-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 2.5s6.5 6.6 6.5 11.4a6.5 6.5 0 0 1-13 0C5.5 9.100 12 2.500 12 2.500z"/></svg>
+    </div>
+    <div>
+      <div class="brand-title">Smart Coaster <span class="badge-edge">Edge AI</span></div>
+      <div class="brand-sub">A smart coaster to help you stay hydrated throughout the day</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="node-pill" title="Connected device">
+      <span class="select-label">Device</span>
+      <span class="mono node-name">coaster-01</span>
+    </div>
+
+    <nav class="nav-tabs" aria-label="Main menu">
+      <a href="./index.html" class="nav-btn">Hydration</a>
+      <a href="./sensors.html" class="nav-btn active" aria-current="page">Sensors &amp; System</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1 class="sr-only">Smart Coaster Sensors &amp; System</h1>
+
+  <div class="telemetry-bar">
+    <div class="telemetry-left">
+      <span class="pulse-dot" id="connDot"></span>
+      <span id="status">MOCK TELEMETRY MODE · COASTER-01 (ESP-NOW + ACK)</span>
+    </div>
+    <div class="telemetry-right mono">
+      <span id="seqBadge">SEQ #1532</span>
+      <span class="sep">|</span>
+      <span id="lastUpdate">UPDATED: --:--:--</span>
+      <span id="who" hidden><span class="sep">|</span><span id="whoEmail"></span> <a href="#" id="logout">Sign out</a></span>
+    </div>
+  </div>
+
+  <form id="login" class="card login-card" hidden>
+    <strong>Sign in</strong>
+    <span class="login-note">The database rules require a login (E5)</span>
+    <input id="email" type="email" placeholder="Email" autocomplete="username" required>
+    <input id="pass" type="password" placeholder="Password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+  </form>
+
+  <!-- Top Section: Load Cell Real-time Chart + 6 Sensor Cards -->
+  <section class="sensor-layout">
+    <div class="card sensor-chart-card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
+          <p class="card-desc">Coaster weight history used to detect drinking and refilling</p>
+        </div>
+        <span class="weight-badge mono" id="w">312.4 g</span>
+      </div>
+      <div class="chart-wrap sensor-chart-wrap">
+        <canvas id="chartW"></canvas>
+      </div>
+    </div>
+
+    <div class="sensor-grid">
+      <!-- 1. Distance -->
+      <div class="mini-card accent-red">
+        <div class="mini-top">
+          <small>ULTRASONIC · HC-SR04</small>
+          <span class="node-tag">NODE</span>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="d">20 cm</b>
+        </div>
+        <span class="mini-foot" id="dDesc">User detected at desk (&lt; 100 cm)</span>
+      </div>
+
+      <!-- 2. Battery -->
+      <div class="mini-card accent-green">
+        <div class="mini-top">
+          <small>BATTERY 18650 · E3</small>
+          <span class="node-tag">NODE</span>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="batt">68 %</b>
+          <div class="mini-bar"><div class="mini-bar-fill" id="battBar" style="width: 68%;"></div></div>
+        </div>
+        <span class="mini-foot mono" id="battMv">3,910 mV · Deep Sleep 10s</span>
+      </div>
+
+      <!-- 3. Temperature -->
+      <div class="mini-card accent-yellow">
+        <div class="mini-top">
+          <small>TEMPERATURE · DHT11</small>
+          <span class="gw-tag">GATEWAY</span>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="t">30 °C</b>
+        </div>
+        <span class="mini-foot">Used to estimate hydration needs</span>
+      </div>
+
+      <!-- 4. Humidity -->
+      <div class="mini-card accent-blue">
+        <div class="mini-top">
+          <small>HUMIDITY · DHT11</small>
+          <span class="gw-tag">GATEWAY</span>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="rh">67 %</b>
+          <div class="mini-bar"><div class="mini-bar-fill" id="rhBar" style="width: 67%;"></div></div>
+        </div>
+        <span class="mini-foot">Relative humidity in the room</span>
+      </div>
+
+      <!-- 5. Sound -->
+      <div class="mini-card accent-yellow">
+        <div class="mini-top">
+          <small>SOUND LEVEL · KY-038</small>
+          <span class="gw-tag">GATEWAY</span>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="snd">120 p2p</b>
+          <div class="mini-bar zones"><div class="mini-bar-fill" id="sndBar" style="width: 24%;"></div></div>
+          <div class="snd-scale"><span>Quiet</span><span>Normal</span><span>Loud</span></div>
+        </div>
+        <span class="mini-foot" id="sndState">Normal sound (alerts enabled)</span>
+      </div>
+
+      <!-- 6. Signal & PIR ISR -->
+      <div class="mini-card accent-blue">
+        <div class="mini-top">
+          <small>ESP-NOW RSSI &amp; PIR · E2</small>
+          <span class="gw-tag">GATEWAY</span>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="rssi">-54 dBm</b>
+        </div>
+        <span class="mini-foot mono" id="pirCount">PIR ISR Interrupts: 14</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom Section: Room Environment Chart + Embedded Architecture Health -->
+  <section class="bottom-grid" style="margin-top: 20px;">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Room Environment History (DHT11)</h3>
+          <p class="card-desc">Temperature (°C) and humidity (%) trends used as AI inputs</p>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chartRoom" height="115"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Embedded Subsystem Status (E1–E5)</h3>
+          <p class="card-desc">Detailed firmware operating status</p>
+        </div>
+      </div>
+      <div class="sys-specs">
+        <div class="spec-row">
+          <span class="spec-key">E1 · Gateway RTOS</span>
+          <span class="spec-val mono">FreeRTOS 4 Tasks + Queue</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">E2 · Motion Trigger</span>
+          <span class="spec-val mono">GPIO27 Rising ISR (No Polling)</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">E3 · Node Power Mode</span>
+          <span class="spec-val mono">Deep Sleep 10s (INA219 Verified)</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">E4 · Link Reliability</span>
+          <span class="spec-val mono">ESP-NOW ACK + Store-and-Forward</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">E5 · Cloud Security</span>
+          <span class="spec-val mono">TLS + Firebase Auth + No Secrets</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

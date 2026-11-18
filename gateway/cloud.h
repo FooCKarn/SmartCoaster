@@ -94,8 +94,17 @@ bool fsOk = false;
 uint32_t storeCount = 0, storeDropped = 0;
 
 void storeBegin() {
-  fsOk = LittleFS.begin(true);          // true = format ถ้ายังไม่เคยใช้
-  if (!fsOk) { Serial.println("[STORE] LittleFS mount FAILED → ไม่มีคิว offline"); return; }
+  fsOk = LittleFS.begin(false);
+  if (!fsOk) {
+    // ครั้งแรกที่ใช้ flash ส่วนนี้ จะเห็น "Corrupted dir pair ... (-84)" ด้านบน เป็นเรื่องปกติ → ฟอร์แมตครั้งเดียว
+    Serial.println("[STORE] flash ยังไม่เคยใช้/เสีย → ฟอร์แมต LittleFS (ครั้งเดียว)");
+    fsOk = LittleFS.begin(true);
+  }
+  if (!fsOk) {
+    Serial.println("[STORE] LittleFS ใช้ไม่ได้ → ไม่มีคิว offline (เช็ค Partition Scheme ต้องมีส่วน SPIFFS/FS)");
+    return;
+  }
+  Serial.printf("[STORE] LittleFS พร้อม (%u/%u KB)\n", (unsigned)(LittleFS.usedBytes() / 1024), (unsigned)(LittleFS.totalBytes() / 1024));
   File f = LittleFS.open(QFILE, FILE_READ);
   storeCount = 0;
   if (f) { while (f.available()) { f.readStringUntil('\n'); storeCount++; } f.close(); }

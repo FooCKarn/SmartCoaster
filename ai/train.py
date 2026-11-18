@@ -8,9 +8,10 @@ gateway ใช้ค่าความเสี่ยงนี้ตัดสิ
 ใช้แค่ numpy:  pip install numpy
 
 วิธีใช้
-  1) ยังไม่มีข้อมูลจริง (ก่อน checkpoint):
-       python ai/train.py --synthetic
-     → จำลองผู้ใช้ 60 วัน เทรน แล้วเขียน gateway/ai_model.h
+  1) ยังไม่มีข้อมูลจริง:
+       python ai/make_dataset.py                                   # สร้าง dataset ตามงานวิจัย (ai/data/)
+       python ai/train.py --csv ai/data/office_hydration_v1.csv    # ← ค่าเริ่มต้นที่ใช้อยู่
+     (แบบเก่า: python ai/train.py --synthetic จำลองง่าย ๆ 60 วัน)
 
   2) มีข้อมูลจริงแล้ว (หลังเปิดระบบเก็บข้อมูลหลายวัน):
        Firebase console → Realtime Database → ⋮ → Export JSON  (ได้ไฟล์ เช่น smartcoaster-export.json)
@@ -41,7 +42,9 @@ FEATURES = [
     "sound_p2p",         # ระดับเสียงห้อง (KY-038, peak-to-peak ADC)
 ]
 HORIZON_MIN = 60       # มองไปข้างหน้า 60 นาที
-DEFAULT_NEED_ML = 150  # ควรดื่มอย่างน้อยเท่านี้ใน 1 ชม.
+# ควรดื่มอย่างน้อยเท่านี้ใน 1 ชม.: EFSA แนะนำน้ำรวม 2.0 L (หญิง) / 2.5 L (ชาย) ต่อวัน ~70–80 % มาจากเครื่องดื่ม
+# = 1.5–2.0 L ตลอด ~16 ชม. ที่ตื่น ≈ 95–125 ml/ชม. ใช้ 100 (ดู ai/data/SOURCES.md)
+DEFAULT_NEED_ML = 100
 
 
 def need_ml(room_t, base=DEFAULT_NEED_ML):
@@ -137,6 +140,22 @@ def load_firebase(path):
     return np.array(X, float), np.array(y, float), np.array(T, float)
 
 
+# ---------------------------------------------------------------- data: CSV จาก ai/make_dataset.py
+def load_csv(path):
+    import csv
+    X, y, T = [], [], []
+    with open(path, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            x = [float(r[n]) for n in FEATURES]
+            X.append(x)
+            y.append(1.0 if float(r["future_ml_60"]) < need_ml(x[3]) else 0.0)
+            hh, mm = r["time"].split(":")
+            # เรียงตามคน แล้ววัน แล้วเวลา → แบ่ง 80/20 = test เป็น "คนที่โมเดลไม่เคยเห็น"
+            T.append(int(r["person"]) * 100000 + int(r["day"]) * 1440 + int(hh) * 60 + int(mm))
+    print(f"CSV {path}: {len(X)} แถว")
+    return np.array(X, float), np.array(y, float), np.array(T, float)
+
+
 # ---------------------------------------------------------------- model
 def fit_logreg(X, y, l2=1e-2, lr=0.2, epochs=3000):
     mean, std = X.mean(0), X.std(0)
@@ -203,14 +222,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--synthetic", action="store_true", help="ใช้ข้อมูลจำลอง")
     ap.add_argument("--firebase", metavar="EXPORT_JSON", help="ไฟล์ Export JSON จาก Firebase RTDB")
+    ap.add_argument("--csv", metavar="CSV", help="dataset จาก ai/make_dataset.py เช่น ai/data/office_hydration_v1.csv")
     ap.add_argument("--mix-synthetic", action="store_true", help="ผสมข้อมูลจำลองเข้ากับข้อมูลจริง")
     ap.add_argument("--days", type=int, default=60, help="จำนวนวันที่จำลอง (default 60)")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "gateway", "ai_model.h"))
     a = ap.parse_args()
-    if not a.synthetic and not a.firebase:
-        ap.error("เลือก --synthetic หรือ --firebase <export.json>")
+    if not a.synthetic and not a.firebase and not a.csv:
+        ap.error("เลือก --csv <dataset.csv>, --synthetic หรือ --firebase <export.json>")
 
     parts, source = [], []
+    if a.csv:
+        parts.append(load_csv(a.csv)); source.append(os.path.basename(a.csv))
     if a.firebase:
         parts.append(load_firebase(a.firebase)); source.append("firebase")
     if a.synthetic or a.mix_synthetic:
@@ -219,6 +241,7 @@ def main():
     T = np.concatenate([p[2] for p in parts])
 
     # แบ่ง train/test ตามเวลา (80% แรก = train) กันข้อมูลอนาคตรั่วเข้า train
+    # (ถ้าใช้ --csv ลำดับคือ คน→วัน→เวลา test จึงเป็นคนที่ไม่เคยเห็นตอนเทรน)
     order = np.argsort(T, kind="stable"); X, y = X[order], y[order]
     cut = int(len(y) * 0.8)
     if cut < 20 or len(y) - cut < 5:
