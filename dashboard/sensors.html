@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body data-page="sensors">
 
@@ -24,9 +26,13 @@
   </div>
 
   <div class="controls">
-    <div class="node-pill" title="Connected device">
+    <div class="node-pill" id="devicePill" title="Device connection status">
       <span class="select-label">Device</span>
       <span class="mono node-name">coaster-01</span>
+      <span class="device-status is-offline" id="deviceStatusBadge">
+        <span class="status-dot" id="deviceDot"></span>
+        <span id="deviceState">Offline</span>
+      </span>
     </div>
 
     <nav class="nav-tabs" aria-label="Main menu">
@@ -65,10 +71,18 @@
     <div class="card sensor-chart-card">
       <div class="card-header">
         <div>
-          <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
-          <p class="card-desc">Coaster weight history used to detect drinking and refilling</p>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
+            <span class="node-tag">NODE</span>
+            <span class="sensor-badge is-offline" id="st-hx711"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
+          <p class="card-desc">Today (00:00 – now) · Scroll wheel or drag on chart to zoom, drag to pan</p>
         </div>
-        <span class="weight-badge mono" id="w">312.4 g</span>
+
+        <div class="chart-controls">
+          <button type="button" class="reset-zoom-btn" id="resetWeightZoom" hidden title="Reset zoom (or double-click chart)">Reset Zoom</button>
+          <span class="weight-badge mono" id="w">312.4 g</span>
+        </div>
       </div>
       <div class="chart-wrap sensor-chart-wrap">
         <canvas id="chartW"></canvas>
@@ -77,10 +91,13 @@
 
     <div class="sensor-grid">
       <!-- 1. Distance -->
-      <div class="mini-card accent-red">
+      <div class="mini-card accent-red" id="card-hcsr04">
         <div class="mini-top">
           <small>ULTRASONIC · HC-SR04</small>
-          <span class="node-tag">NODE</span>
+          <div class="tag-group">
+            <span class="node-tag">NODE</span>
+            <span class="sensor-badge is-offline" id="st-hcsr04"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="d">20 cm</b>
@@ -89,10 +106,13 @@
       </div>
 
       <!-- 2. Battery -->
-      <div class="mini-card accent-green">
+      <div class="mini-card accent-green" id="card-batt">
         <div class="mini-top">
           <small>BATTERY 18650 · E3</small>
-          <span class="node-tag">NODE</span>
+          <div class="tag-group">
+            <span class="node-tag">NODE</span>
+            <span class="sensor-badge is-offline" id="st-batt"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="batt">68 %</b>
@@ -102,10 +122,13 @@
       </div>
 
       <!-- 3. Temperature -->
-      <div class="mini-card accent-yellow">
+      <div class="mini-card accent-yellow" id="card-temp">
         <div class="mini-top">
           <small>TEMPERATURE · DHT11</small>
-          <span class="gw-tag">GATEWAY</span>
+          <div class="tag-group">
+            <span class="gw-tag">GATEWAY</span>
+            <span class="sensor-badge is-offline" id="st-temp"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="t">30 °C</b>
@@ -114,10 +137,13 @@
       </div>
 
       <!-- 4. Humidity -->
-      <div class="mini-card accent-blue">
+      <div class="mini-card accent-blue" id="card-rh">
         <div class="mini-top">
           <small>HUMIDITY · DHT11</small>
-          <span class="gw-tag">GATEWAY</span>
+          <div class="tag-group">
+            <span class="gw-tag">GATEWAY</span>
+            <span class="sensor-badge is-offline" id="st-rh"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="rh">67 %</b>
@@ -127,10 +153,13 @@
       </div>
 
       <!-- 5. Sound -->
-      <div class="mini-card accent-yellow">
+      <div class="mini-card accent-yellow" id="card-sound">
         <div class="mini-top">
           <small>SOUND LEVEL · KY-038</small>
-          <span class="gw-tag">GATEWAY</span>
+          <div class="tag-group">
+            <span class="gw-tag">GATEWAY</span>
+            <span class="sensor-badge is-offline" id="st-sound"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="snd">120 p2p</b>
@@ -141,10 +170,13 @@
       </div>
 
       <!-- 6. Signal & PIR ISR -->
-      <div class="mini-card accent-blue">
+      <div class="mini-card accent-blue" id="card-link">
         <div class="mini-top">
           <small>ESP-NOW RSSI &amp; PIR · E2</small>
-          <span class="gw-tag">GATEWAY</span>
+          <div class="tag-group">
+            <span class="gw-tag">GATEWAY</span>
+            <span class="sensor-badge is-offline" id="st-link"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="rssi">-54 dBm</b>

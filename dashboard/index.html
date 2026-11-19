@@ -24,9 +24,13 @@
   </div>
 
   <div class="controls">
-    <div class="node-pill" title="Connected device">
+    <div class="node-pill" id="devicePill" title="Device connection status">
       <span class="select-label">Device</span>
       <span class="mono node-name">coaster-01</span>
+      <span class="device-status is-offline" id="deviceStatusBadge">
+        <span class="status-dot" id="deviceDot"></span>
+        <span id="deviceState">Offline</span>
+      </span>
     </div>
 
     <nav class="nav-tabs" aria-label="Main menu">
@@ -215,7 +219,6 @@
 </footer>
 
 <script>
-  // If app.js never ran (e.g. opened as file://), say so instead of staying silent.
   window.addEventListener("load", function () {
     var s = document.getElementById("status");
     if (s && s.textContent.trim() === "MOCK DATA MODE · coaster-01") {

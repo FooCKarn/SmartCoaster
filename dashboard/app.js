@@ -2,6 +2,125 @@ const $ = (id) => document.getElementById(id);
 const currentPage = document.body.dataset.page; // "dashboard" หรือ "sensors"
 const GOAL_ML = 2000;
 const SOUND_MAX_P2P = 500; // Scale reference สำหรับคำนวณ % เสียงของ KY-038
+const OFFLINE_TIMEOUT_MS = 30 * 1000; // เกิน 30 วินาทีโดยไม่มีข้อมูลใหม่ = Offline
+
+let lastTelemetryTs = null;
+let lastSensorPayload = null;
+let isMockMode = false;
+let currentNodeId = "coaster-01";
+let isDemoSpeed = false;
+
+
+function formatElapsed(ms) {
+  const sec = Math.max(1, Math.floor(ms / 1000));
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  return `${hr}h ${min % 60}m`;
+}
+
+// Helper อัปเดตป้าย Online / Offline ของเซนเซอร์แต่ละตัวบนหน้า Sensors
+function setSensorBadge(badgeId, cardId, isOnline) {
+  const badge = $(badgeId);
+  if (badge) {
+    badge.className = `sensor-badge ${isOnline ? "is-online" : "is-offline"}`;
+    const label = badge.querySelector("span");
+    if (label) label.textContent = isOnline ? "Online" : "Offline";
+  }
+  if (cardId) {
+    const card = $(cardId);
+    if (card) {
+      card.classList.remove("accent-green", "accent-red", "accent-yellow", "accent-blue");
+      card.classList.add(isOnline ? "accent-green" : "accent-red");
+    }
+  }
+}
+
+function updatePerSensorStatuses(v, deviceOnline) {
+  if (currentPage !== "sensors") return;
+
+  if (!deviceOnline || !v) {
+    setSensorBadge("st-hx711", null, false);
+    setSensorBadge("st-hcsr04", "card-hcsr04", false);
+    setSensorBadge("st-batt", "card-batt", false);
+    setSensorBadge("st-temp", "card-temp", false);
+    setSensorBadge("st-rh", "card-rh", false);
+    setSensorBadge("st-sound", "card-sound", false);
+    setSensorBadge("st-link", "card-link", false);
+    return;
+  }
+
+  const hx711Ok = typeof v.weight_g === "number" && !Number.isNaN(v.weight_g);
+  const hcsr04Ok = typeof v.dist_cm === "number" && !Number.isNaN(v.dist_cm);
+  const battOk = typeof v.batt_mv === "number" && v.batt_mv > 0;
+  const tempOk = typeof v.room_t === "number" && !Number.isNaN(v.room_t) && v.room_t > 0;
+  const rhOk = typeof v.room_rh === "number" && !Number.isNaN(v.room_rh) && v.room_rh > 0;
+  const soundOk = typeof v.sound_p2p === "number" && !Number.isNaN(v.sound_p2p) && v.sound_p2p >= 0;
+  const linkOk = typeof v.rssi === "number" && v.rssi !== 0;
+
+  setSensorBadge("st-hx711", null, hx711Ok);
+  setSensorBadge("st-hcsr04", "card-hcsr04", hcsr04Ok);
+  setSensorBadge("st-batt", "card-batt", battOk);
+  setSensorBadge("st-temp", "card-temp", tempOk);
+  setSensorBadge("st-rh", "card-rh", rhOk);
+  setSensorBadge("st-sound", "card-sound", soundOk);
+  setSensorBadge("st-link", "card-link", linkOk);
+}
+
+function updateDeviceOnlineStatus() {
+  const badge = $("deviceStatusBadge");
+  const stateText = $("deviceState");
+  const connDot = $("connDot");
+  const statusEl = $("status");
+  const lastUpdateEl = $("lastUpdate");
+
+  if (isMockMode) {
+    if (badge) badge.className = "device-status is-mock";
+    if (stateText) stateText.textContent = "Mock";
+    if (connDot) connDot.className = "pulse-dot";
+    updatePerSensorStatuses(lastSensorPayload, true);
+    return;
+  }
+
+  if (!lastTelemetryTs) {
+    if (badge) badge.className = "device-status is-offline";
+    if (stateText) stateText.textContent = "Offline";
+    if (connDot) connDot.className = "pulse-dot offline";
+    updatePerSensorStatuses(null, false);
+    return;
+  }
+
+  const ageMs = Date.now() - lastTelemetryTs;
+  const isOnline = ageMs <= OFFLINE_TIMEOUT_MS;
+
+  if (isOnline) {
+    if (badge) badge.className = "device-status is-online";
+    if (stateText) stateText.textContent = "Online";
+    if (connDot) connDot.className = "pulse-dot online";
+    if (statusEl) {
+      statusEl.textContent = `LIVE FIREBASE${isDemoSpeed ? " (DEMO SPEED)" : ""} | NODE ${currentNodeId}`;
+    }
+    if (lastUpdateEl) {
+      lastUpdateEl.textContent = "UPDATED: " + new Date(lastTelemetryTs).toLocaleTimeString("en-GB");
+    }
+  } else {
+    const ago = formatElapsed(ageMs);
+    if (badge) badge.className = "device-status is-offline";
+    if (stateText) stateText.textContent = "Offline";
+    if (connDot) connDot.className = "pulse-dot offline";
+    if (statusEl) {
+      statusEl.textContent = `DEVICE OFFLINE (${ago} ago) | NODE ${currentNodeId}`;
+    }
+    if (lastUpdateEl) {
+      lastUpdateEl.textContent = `LAST SEEN: ${new Date(lastTelemetryTs).toLocaleTimeString("en-GB")} (${ago} ago)`;
+    }
+  }
+
+  updatePerSensorStatuses(lastSensorPayload, isOnline);
+}
+
+setInterval(updateDeviceOnlineStatus, 2000);
 
 // ============================================================================
 // 1. MOCK DATA (ข้อมูลจำลองสำหรับผู้ใช้คนเดียว: coaster-01)
@@ -20,12 +139,12 @@ const MOCK_DATA = {
   motion_count: 14,
   daily_ml: 1350,
   hourly_rate: 168,
-  week_ml: [1800, 2050, 1500, 1250, 1900, 2100, 1700], // ปริมาณน้ำ 7 วันก่อนหน้า (เก่าสุด -> เมื่อวาน) เป็น mock
-  pkts_retried: 95,     // แพ็กเก็ต ESP-NOW ที่ต้องส่งซ้ำ/เก็บคิว (E4) จากทั้งหมด seq
+  week_ml: [1800, 2050, 1500, 1250, 1900, 2100, 1700],
+  pkts_retried: 95,
   last_sip_ts: Date.now() - 15 * 60 * 1000,
   last_sip_ml: 45,
-  ai_risk: "moderate",  // "normal" (เขียว) | "moderate" (เหลือง) | "high" (แดง)
-  alert_state: "idle",  // "idle" (เขียว) | "servo_up" (เหลือง) | "line_sent" (แดง)
+  ai_risk: "moderate",
+  alert_state: "idle",
   hourly_labels: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"],
   hourly_ml: [250, 200, 150, 300, 250, 200],
   sips: [
@@ -35,24 +154,30 @@ const MOCK_DATA = {
     { time: "11:10", ml: 150, note: "SG90 flag reminder" },
   ],
   history: [
-    { time: "13:50", weight_g: 420, temp: 29, rh: 65 },
-    { time: "13:55", weight_g: 420, temp: 29, rh: 66 },
-    { time: "14:00", weight_g: 380, temp: 30, rh: 66 },
-    { time: "14:05", weight_g: 380, temp: 30, rh: 67 },
-    { time: "14:10", weight_g: 357, temp: 30, rh: 67 },
-    { time: "14:15", weight_g: 357, temp: 30, rh: 67 },
-    { time: "14:20", weight_g: 312.4, temp: 30, rh: 67 },
+    { ts: Date.now() - 240 * 60 * 1000, time: "10:20", weight_g: 480, temp: 28, rh: 64 },
+    { ts: Date.now() - 120 * 60 * 1000, time: "12:20", weight_g: 450, temp: 29, rh: 65 },
+    { ts: Date.now() - 30 * 60 * 1000,  time: "13:50", weight_g: 420, temp: 29, rh: 65 },
+    { ts: Date.now() - 25 * 60 * 1000,  time: "13:55", weight_g: 420, temp: 29, rh: 66 },
+    { ts: Date.now() - 20 * 60 * 1000,  time: "14:00", weight_g: 380, temp: 30, rh: 66 },
+    { ts: Date.now() - 15 * 60 * 1000,  time: "14:05", weight_g: 380, temp: 30, rh: 67 },
+    { ts: Date.now() - 10 * 60 * 1000,  time: "14:10", weight_g: 357, temp: 30, rh: 67 },
+    { ts: Date.now() - 5 * 60 * 1000,   time: "14:15", weight_g: 357, temp: 30, rh: 67 },
+    { ts: Date.now(),                   time: "14:20", weight_g: 312.4, temp: 30, rh: 67 },
   ],
 };
 
 // ============================================================================
 // 2. CHART INITIALIZATION
 // ============================================================================
-const hasChart = typeof Chart !== "undefined"; // กันสคริปต์พังถ้า CDN ของ Chart.js โหลดไม่ได้
+const hasChart = typeof Chart !== "undefined";
 let chartW = null;
 let chartRoom = null;
 
 if (currentPage === "sensors" && hasChart) {
+  if (window.ChartZoom) {
+    Chart.register(window.ChartZoom);
+  }
+
   if ($("chartW")) {
     chartW = new Chart($("chartW"), {
       type: "line",
@@ -73,9 +198,63 @@ if (currentPage === "sensors" && hasChart) {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { grid: { color: "#f1f5f9" } } },
+        interaction: {
+          mode: "index",
+          intersect: false,
+        },
+        plugins: {
+          legend: { display: false },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: "x",
+              modifierKey: "shift",
+              onPanComplete: ({ chart }) => {
+                if ($("resetWeightZoom")) $("resetWeightZoom").hidden = !chart.isZoomedOrPanned();
+              },
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1,
+              },
+              pinch: {
+                enabled: true,
+              },
+              drag: {
+                enabled: true,
+                backgroundColor: "rgba(26, 141, 174, 0.16)",
+                borderColor: "#1a8dae",
+                borderWidth: 1,
+                threshold: 8,
+              },
+              mode: "x",
+              onZoomComplete: ({ chart }) => {
+                if ($("resetWeightZoom")) $("resetWeightZoom").hidden = !chart.isZoomedOrPanned();
+              },
+            },
+            limits: {
+              x: { min: "original", max: "original", minRange: 2 },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 },
+          },
+          y: {
+            grid: { color: "#f1f5f9" },
+          },
+        },
       },
+    });
+
+    // Double-click chart to reset zoom
+    $("chartW").addEventListener("dblclick", () => {
+      if (chartW && typeof chartW.resetZoom === "function") {
+        chartW.resetZoom();
+        if ($("resetWeightZoom")) $("resetWeightZoom").hidden = true;
+      }
     });
   }
 
@@ -109,7 +288,13 @@ if (currentPage === "sensors" && hasChart) {
   }
 }
 
-// Helper ตั้งค่าสีให้วงกลมไอคอนและจุดสถานะด้านขวา (green | yellow | red)
+if (currentPage === "sensors" && $("resetWeightZoom")) {
+  $("resetWeightZoom").addEventListener("click", () => {
+    if (chartW && typeof chartW.resetZoom === "function") chartW.resetZoom();
+    $("resetWeightZoom").hidden = true;
+  });
+}
+
 function setStatusRow(iconBoxId, dotId, level) {
   const box = $(iconBoxId);
   const dot = $(dotId);
@@ -120,7 +305,6 @@ function setStatusRow(iconBoxId, dotId, level) {
 // ============================================================================
 // 3. UI RENDER FUNCTIONS
 // ============================================================================
-// กราฟแท่ง 7 วันก่อนหน้า (ไม่รวมวันนี้) พร้อมราง, เส้นเป้าหมาย และ tooltip
 function renderWeekBars(mlList) {
   const el = $("weekBars");
   if (!el) return;
@@ -131,7 +315,7 @@ function renderWeekBars(mlList) {
   const n = mlList.length;
   const days = mlList.map((ml, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (n - i)); // i = n-1 -> เมื่อวาน
+    d.setDate(d.getDate() - (n - i));
     return {
       ml,
       short: d.toLocaleDateString("en-GB", { weekday: "short" }),
@@ -178,9 +362,6 @@ function renderDashboardPage(v) {
     : "–";
   $("lastSipMl").textContent = v.last_sip_ml ? `+${v.last_sip_ml} ml` : "–";
 
-  // --------------------------------------------------------------------------
-  // Row 1: Hydration Risk (เขียว = ปกติ, เหลือง = เริ่มดื่มน้อย, แดง = เสี่ยงขาดน้ำสูง)
-  // --------------------------------------------------------------------------
   const risk = v.ai_risk || (pct >= 75 ? "normal" : pct >= 50 ? "moderate" : "high");
   if (risk === "normal") {
     setStatusRow("aiIconBox", "aiDot", "green");
@@ -198,9 +379,6 @@ function renderDashboardPage(v) {
   if (typeof v.ai_p === "number") $("aiScore").textContent += ` (${Math.round(v.ai_p * 100)}%)`;
   $("aiSubText").textContent = `Room temperature ${Math.round(v.room_t)}°C · Humidity ${Math.round(v.room_rh)}%`;
 
-  // --------------------------------------------------------------------------
-  // Row 2: Desk Presence (เขียว = อยู่ที่โต๊ะ, เหลือง = คุย/เสียงดัง, แดง = ไม่อยู่)
-  // --------------------------------------------------------------------------
   const atDesk = v.dist_cm > 0 && v.dist_cm < 100;
   const isNoisy = (v.sound_p2p ?? 0) > 300;
   if (!atDesk) {
@@ -217,9 +395,6 @@ function renderDashboardPage(v) {
     $("deskSubText").textContent = `Distance ${Math.round(v.dist_cm)} cm · Room is quiet`;
   }
 
-  // --------------------------------------------------------------------------
-  // Row 3: Notifications (เขียว = ปกติ, เหลือง = ยกป้ายเตือน, แดง = ส่ง LINE แล้ว)
-  // --------------------------------------------------------------------------
   const alertState = v.alert_state || (v.servo_up ? "servo_up" : "idle");
   if (alertState === "estop") {
     setStatusRow("alertIconBox", "alertDot", "red");
@@ -239,10 +414,8 @@ function renderDashboardPage(v) {
     $("alertSubText").textContent = "SG90: Raised | LINE: Notification delivered";
   }
 
-  // Hourly Chart
   renderWeekBars(v.week_ml || []);
 
-  // Sip History Log
   if ($("sipLogList") && v.sips) {
     $("sipLogList").innerHTML = v.sips
       .map(
@@ -259,7 +432,6 @@ function renderDashboardPage(v) {
   }
 }
 
-// E4: สัดส่วนแพ็กเก็ต ESP-NOW ที่ได้ ACK ในครั้งแรก เทียบกับที่ต้องส่งซ้ำ/เก็บคิว
 function renderLinkSplit(v) {
   if (!$("lnkRow")) return;
   const total = v.seq ?? 0;
@@ -280,6 +452,23 @@ function renderLinkSplit(v) {
   $("lnkRow").style.setProperty("--pm", `${Math.max(rtPct, 1)}fr`);
 }
 
+function renderWeightChart(rows) {
+  if (!chartW) return;
+  const now = Date.now();
+  const today0 = startOfDay(now); // จำกัดข้อมูลสูงสุดเฉพาะภายในวันนี้ (00:00 - ปัจจุบัน)
+  let todayRows = rows.filter((r) => (r.ts ?? now) >= today0);
+
+  if (todayRows.length > 400) {
+    const step = Math.ceil(todayRows.length / 400);
+    todayRows = todayRows.filter((_, idx) => idx % step === 0 || idx === todayRows.length - 1);
+  }
+
+  chartW.data.labels = todayRows.map((r) => r.time);
+  chartW.data.datasets[0].data = todayRows.map((r) => r.weight_g);
+  chartW.data.datasets[0].pointRadius = todayRows.length > 80 ? 0 : 3;
+  chartW.update("none");
+}
+
 function renderSensorsPage(v, historyRows = []) {
   renderLinkSplit(v);
   $("w").textContent = `${Number(v.weight_g).toFixed(1)} g`;
@@ -289,7 +478,7 @@ function renderSensorsPage(v, historyRows = []) {
   $("t").textContent = `${Math.round(v.room_t)} °C`;
   $("rh").textContent = `${Math.round(v.room_rh)} %`;
   $("snd").textContent = `${v.sound_p2p ?? 0} p2p`;
-  // ระดับเสียง: Quiet < 100 | Normal 100-300 | Loud > 300 p2p (เกิน 300 = เลื่อนแจ้งเตือน)
+
   const sndP2p = v.sound_p2p ?? 0;
   const sndPct = Math.min(100, Math.max(0, Math.round((sndP2p / SOUND_MAX_P2P) * 100)));
   $("sndBar").style.width = `${sndPct}%`;
@@ -315,23 +504,23 @@ function renderSensorsPage(v, historyRows = []) {
   }
 
   if (historyRows.length) {
-    if (chartW) {
-      chartW.data.labels = historyRows.map((r) => r.time);
-      chartW.data.datasets[0].data = historyRows.map((r) => r.weight_g);
-      chartW.update();
-    }
+    renderWeightChart(historyRows);
+
+    const recentRoom = historyRows.slice(-30);
     if (chartRoom) {
-      chartRoom.data.labels = historyRows.map((r) => r.time);
-      chartRoom.data.datasets[0].data = historyRows.map((r) => r.temp);
-      chartRoom.data.datasets[1].data = historyRows.map((r) => r.rh);
+      chartRoom.data.labels = recentRoom.map((r) => r.time);
+      chartRoom.data.datasets[0].data = recentRoom.map((r) => r.temp);
+      chartRoom.data.datasets[1].data = recentRoom.map((r) => r.rh);
       chartRoom.update();
     }
   }
 }
 
 function updateAll(v, historyRows = []) {
+  lastSensorPayload = v;
   $("seqBadge").textContent = `SEQ #${v.seq ?? 0}`;
   $("lastUpdate").textContent = "UPDATED: " + new Date(v.ts).toLocaleTimeString("en-GB");
+  updateDeviceOnlineStatus();
 
   if (currentPage === "dashboard") {
     renderDashboardPage(v);
@@ -344,8 +533,8 @@ function updateAll(v, historyRows = []) {
 // 4. DATA SOURCE: Firebase จริง (ถ้าไม่มี config.js จะแสดง MOCK_DATA แทน)
 // ============================================================================
 const FB_SDK = "https://www.gstatic.com/firebasejs/10.12.2";
-const AI_P_UP = 0.70;   // ตรงกับ gateway/gateway.ino: ความเสี่ยง ≥ ค่านี้ → ยกป้าย
-const AI_P_DOWN = 0.62; // ตรงกับ gateway/gateway.ino: ความเสี่ยง ≤ ค่านี้ → ลดป้าย
+const AI_P_UP = 0.70;
+const AI_P_DOWN = 0.62;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const clock = (ts, withSec = false) =>
@@ -356,11 +545,11 @@ const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); ret
 const sumMl = (rows) => Math.round(rows.reduce((s, d) => s + (d.ml || 0), 0));
 
 function runMock(reason) {
+  isMockMode = true;
   $("status").textContent = `MOCK DATA MODE (${reason})`;
   updateAll(MOCK_DATA, MOCK_DATA.history);
 }
 
-// แปลง /latest และ /drinks ที่ gateway ส่งจริง ให้เป็นรูปแบบที่หน้าเว็บใช้ (ดู dashboard_documentation.md ข้อ 4)
 function toView(latest, drinks) {
   const now = Date.now();
   const today0 = startOfDay(now);
@@ -403,7 +592,7 @@ async function startLive() {
     import(`${FB_SDK}/firebase-database.js`),
     import(`${FB_SDK}/firebase-auth.js`),
   ]);
-  const { getDatabase, ref, onValue, query, orderByChild, startAt, limitToLast } = fdb;
+  const { getDatabase, ref, onValue, query, orderByChild, startAt } = fdb;
   const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } = fauth;
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
@@ -415,9 +604,9 @@ async function startLive() {
   let unsubs = [];
   const render = () => { if (latest) updateAll(toView(latest, drinks), history); };
 
-  // อ่านไม่ได้เพราะ rules แบบล็อกอิน (E5) → แสดงฟอร์มล็อกอิน
   const onErr = (err) => {
-    $("connDot").classList.remove("online");
+    lastTelemetryTs = null;
+    updateDeviceOnlineStatus();
     if (String(err.code || err.message).toLowerCase().includes("permission")) {
       $("login").hidden = false;
       $("status").textContent = "LOGIN REQUIRED (database rules)";
@@ -447,11 +636,16 @@ async function startLive() {
     unsubs.push(onValue(ref(db, "latest"), (snap) => {
       latest = snap.val();
       if (!latest) {
+        lastTelemetryTs = null;
         $("status").textContent = "CONNECTED, WAITING FOR /latest DATA";
+        updateDeviceOnlineStatus();
         return;
       }
-      $("connDot").classList.add("online");
-      $("status").textContent = `LIVE FIREBASE${latest.demo ? " (DEMO SPEED)" : ""} | NODE ${latest.node_id}`;
+      isMockMode = false;
+      lastTelemetryTs = latest.ts || Date.now();
+      currentNodeId = latest.node_id || "coaster-01";
+      isDemoSpeed = Boolean(latest.demo);
+      updateDeviceOnlineStatus();
       render();
     }, onErr));
 
@@ -465,13 +659,14 @@ async function startLive() {
       }, onErr));
     }
 
-    // 3) กราฟย้อนหลัง 30 จุดจาก /readings (หน้า Sensors)
+    // 3) กราฟย้อนหลังเฉพาะภายในวันนี้ (ตั้งแต่ 00:00) จาก /readings (หน้า Sensors)
     if (currentPage === "sensors") {
-      unsubs.push(onValue(query(ref(db, "readings"), orderByChild("ts"), limitToLast(30)), (snap) => {
+      const todayStart = startOfDay(Date.now());
+      unsubs.push(onValue(query(ref(db, "readings"), orderByChild("ts"), startAt(todayStart)), (snap) => {
         history = [];
         snap.forEach((c) => {
           const r = c.val();
-          history.push({ time: clock(r.ts, true), weight_g: r.weight_g, temp: r.room_t, rh: r.room_rh });
+          history.push({ ts: r.ts, time: clock(r.ts, true), weight_g: r.weight_g, temp: r.room_t, rh: r.room_rh });
         });
         render();
       }, onErr));
