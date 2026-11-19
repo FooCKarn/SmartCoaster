@@ -13,6 +13,7 @@
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include <time.h>
+#include <Preferences.h>
 #include "msg.h"
 #include "secrets.h"
 #include "root_ca.h"        // ต้องมาก่อน line_push.h / cloud.h (E5)
@@ -59,6 +60,18 @@ const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 ว�
 // เพราะยังไม่มีข้อมูลจาก node / PIR ยังไม่นิ่ง → AI จะเข้าใจว่า "ไม่มีคน" (present=0) แล้วยกป้ายทันทีหลังอัปโค้ด
 // เวลาจริง ไม่คูณ DEMO_SPEED (PIR ส่วนใหญ่ต้องอุ่นเครื่อง ~30–60 วินาที)
 const uint32_t AI_WARMUP_MS = 60000;
+
+// ===== กติกาสำหรับใช้งานจริง (ดู docs/real-world-cases.md) =====
+// ทุกค่าเป็นเวลาจริง ยกเว้นที่เขียนว่า "นาที (คูณ DEMO_SPEED)"
+const bool     REQUIRE_PRESENT   = true;    // ยกป้ายเฉพาะตอนมีคนอยู่หน้าแก้ว (ไม่มีคนเห็น ยกไปก็เปล่า)
+const float    MAX_NO_DRINK_MIN  = 90;      // นาที (คูณ DEMO_SPEED) ไม่ได้ดื่มนานเท่านี้ ยกป้ายเลยไม่ต้องรอ AI
+const uint32_t NODE_STALE_MS     = 60000;   // node เงียบเกินนี้ = ออฟไลน์/แบตหมด → ไม่รู้ว่าดื่มหรือยัง ห้ามยกป้ายใหม่
+const uint32_t CUP_AWAY_GRACE_MS = 180000;  // ยกแก้วออกไม่เกิน 3 นาที = น่าจะกำลังดื่ม ห้ามยกป้าย
+const uint32_t MIN_DWELL_MS      = 60000;   // ป้ายต้องค้างอย่างน้อย 1 นาทีก่อน AI จะเปลี่ยนอีก (กันกระพือ) การดื่มไม่ต้องรอ
+// ช่วงเวลาเงียบ (ชั่วโมงไทย): ไม่ยกป้าย ไม่ส่ง LINE และลดป้ายลง  ตั้ง START == END เพื่อปิด
+// ตอน DEMO_SPEED != 1 (ถ่ายวิดีโอ) จะไม่ใช้ช่วงเวลาเงียบ
+const int      QUIET_START_H     = 22;
+const int      QUIET_END_H       = 7;
 const uint32_t SENSE_EVERY_MS = 5000;   // อ่าน DHT11 / เสียง ทุก 5 วินาที
 const uint32_t RETRY_AGE_MS = 200;
 // =====================================
@@ -85,6 +98,11 @@ struct State {
   float roomT = NAN, roomRH = NAN;
   int   soundP2P = 0;
   float lastDistCm = -1;
+  uint32_t lastNodeMs = 0;          // เวลาที่ได้ข้อมูลสด (ไม่ใช่ข้อมูลค้างคิว) จาก node ล่าสุด
+  uint32_t cupAwaySinceMs = 0;      // 0 = แก้ววางอยู่
+  bool present = false;
+  bool quiet = false;
+  uint32_t signChangedMs = 0;
   // การดื่ม
   DrinkDetector drink;
   struct { uint32_t ms; float ml; } hist[32];
@@ -125,6 +143,7 @@ void setSignLocked(bool up, const char *why) {
   S.signUp = up;
   S.lineSent = false;
   if (up) S.signUpSinceMs = millis();
+  S.signChangedMs = millis();
   int deg = up ? SIGN_UP_DEG : SIGN_DOWN_DEG;
   xQueueOverwrite(servoQueue, &deg);
   Serial.printf("[SIGN] %s (%s)  p=%.2f\n", up ? "UP" : "DOWN", why, S.aiP);
@@ -268,6 +287,30 @@ void queueUpload(UpItem &it, JsonDocument &doc) {
   if (xQueueSend(uploadQueue, &it, pdMS_TO_TICKS(200)) != pdTRUE) { Lock l; S.uploadDrop++; }
 }
 
+// ---------------- จำยอดดื่มข้ามรีบูต (NVS) ----------------
+// gateway ไฟดับ/อัปโค้ดใหม่ ยอดวันนี้กับเวลาดื่มล่าสุดไม่หาย (คืนค่าตอนได้เวลา NTP แล้ว)
+Preferences prefs;
+void saveDrinkStateLocked() {
+  struct tm now;
+  if (!timeValid() || !getLocalTime(&now, 0)) return;
+  prefs.putInt("yday", now.tm_yday);
+  prefs.putFloat("ml", S.mlToday);
+  prefs.putULong64("lastDrink", (uint64_t)(epochMs() - (millis() - S.lastDrinkMs)));
+}
+
+void restoreDrinkStateLocked(const struct tm &now) {
+  uint64_t last = prefs.getULong64("lastDrink", 0);
+  if (last && epochMs() > last && epochMs() - last < 7ULL * 86400000ULL) {
+    // ลบแบบ unsigned: millis() - อายุ จะวนค่า แต่ minsSince() ลบกลับได้อายุจริง
+    S.lastDrinkMs = millis() - (uint32_t)(epochMs() - last);
+    Serial.printf("[DRINK] คืนค่าจาก flash: ดื่มล่าสุด %.0f นาทีที่แล้ว\n", (epochMs() - last) / 60000.0);
+  }
+  if (prefs.getInt("yday", -1) == now.tm_yday) {
+    S.mlToday = prefs.getFloat("ml", 0);
+    Serial.printf("[DRINK] คืนค่าจาก flash: วันนี้ดื่มไป %.0f ml\n", S.mlToday);
+  }
+}
+
 void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
   if (ev == EV_DRINK) {
     S.hist[S.histHead].ms = millis();
@@ -278,7 +321,10 @@ void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
     S.mlToday += amount;
     S.holdUntilMs = millis() + scaledMinToMs(HOLD_DOWN_MIN);
     setSignLocked(false, "ดื่มแล้ว");
+    saveDrinkStateLocked();
   }
+  if (ev == EV_CUP_LIFTED) S.cupAwaySinceMs = millis() | 1;
+  if (ev == EV_CUP_PLACED) S.cupAwaySinceMs = 0;
   switch (ev) {
     case EV_DRINK:       Serial.printf("[DRINK] ดื่ม %.0f ml  (วันนี้ %.0f ml)\n", amount, S.mlToday); break;
     case EV_REFILL:      Serial.printf("[DRINK] เติมน้ำ +%.0f g\n", amount); break;
@@ -310,7 +356,10 @@ void nodeTask(void *) {
     {
       Lock l;
       S.rxCount++;
-      S.lastDistCm = m.dist_cm;
+      if (m.queued == 0 && m.age_ms < 2000) {        // ข้อมูลค้างคิวเป็นค่าเก่า ไม่ใช้บอกว่าตอนนี้มีคนไหม
+        S.lastDistCm = m.dist_cm;
+        S.lastNodeMs = millis();
+      }
       float refBefore = S.drink.refWeight();
       ev = S.drink.update(m.weight_g, &amount);
       if (ev != EV_NONE) handleDrinkLocked(m, ev, amount);
@@ -338,6 +387,7 @@ void nodeTask(void *) {
         for (int i = 0; i < AI_N_FEATURES; i++) x.add(S.aiX[i]);
       }
       rec["sign_up"]   = S.signUp;
+      rec["present"]   = S.present;
       rec["estop"]     = (bool)estop;
       rec["line_sent"] = S.lineSent;
     }
@@ -385,10 +435,20 @@ void sensorTask(void *) {
       if (!isnan(t)) S.roomT = t;
       if (!isnan(h)) S.roomRH = h;
       S.soundP2P = snd;
-      if (haveTime && S.todayYday != now.tm_yday) {      // วันใหม่ → รีเซ็ตยอดวันนี้
-        if (S.todayYday != -1) Serial.println("[DRINK] วันใหม่ รีเซ็ตยอดวันนี้");
+      if (haveTime && S.todayYday == -1) {               // เพิ่งได้เวลาหลังบูต → คืนค่าที่จำไว้
+        S.todayYday = now.tm_yday;
+        restoreDrinkStateLocked(now);
+      } else if (haveTime && S.todayYday != now.tm_yday) {  // วันใหม่ → รีเซ็ตยอดวันนี้
+        Serial.println("[DRINK] วันใหม่ รีเซ็ตยอดวันนี้");
         S.todayYday = now.tm_yday;
         S.mlToday = 0;
+        saveDrinkStateLocked();
+      }
+      S.quiet = false;
+      if (haveTime && DEMO_SPEED == 1 && QUIET_START_H != QUIET_END_H) {
+        int h = now.tm_hour;
+        S.quiet = QUIET_START_H < QUIET_END_H ? (h >= QUIET_START_H && h < QUIET_END_H)
+                                              : (h >= QUIET_START_H || h < QUIET_END_H);
       }
     }
     vTaskDelayUntil(&wake, pdMS_TO_TICKS(SENSE_EVERY_MS));
@@ -400,7 +460,9 @@ void sensorTask(void *) {
 void computeFeaturesLocked(float *x) {
   bool pir  = lastMotionMs != 0 && millis() - lastMotionMs < PIR_WINDOW_MS;
   // < 5 cm = ค่าผิด (HC-SR04 วัดใกล้กว่า ~2–4 cm ไม่ได้ มักเป็นเสียงสะท้อนผนังกล่อง) ไม่นับว่ามีคน
-  bool near = S.lastDistCm >= 5 && S.lastDistCm < PRESENCE_CM;
+  bool nodeFresh = S.lastNodeMs != 0 && millis() - S.lastNodeMs < NODE_STALE_MS;
+  bool near = nodeFresh && S.lastDistCm >= 5 && S.lastDistCm < PRESENCE_CM;   // ค่าเก่าจาก node ที่ดับไปแล้ว ไม่นับ
+  S.present = pir || near;
   x[0] = min(minsSince(S.lastDrinkMs), 240.0f);
   x[1] = mlLastHourLocked();
   x[2] = S.mlToday;
@@ -408,6 +470,10 @@ void computeFeaturesLocked(float *x) {
   x[4] = isnan(S.roomRH) ? AI_MEAN[4] : S.roomRH;
   x[5] = (pir || near) ? 1 : 0;
   x[6] = S.soundP2P;
+  // ค่าเพี้ยน (DHT11 อ่านผิด, เสียงดังกระแทก) ห้ามดัน AI เกินช่วงที่เคยเห็นตอนเทรน: ตัดไว้ที่ เฉลี่ย ± 3 SD
+  for (int i = 1; i < AI_N_FEATURES; i++)
+    x[i] = constrain(x[i], AI_MEAN[i] - 3 * AI_STD[i], AI_MEAN[i] + 3 * AI_STD[i]);
+  x[1] = max(x[1], 0.0f); x[2] = max(x[2], 0.0f); x[6] = max(x[6], 0.0f);
 }
 
 void printAILocked() {
@@ -421,10 +487,15 @@ void printAILocked() {
 
 // ยังห้ามยกป้ายอยู่ไหม คืนเหตุผล (nullptr = ยกได้)
 const char *raiseBlockedLocked() {
+  if (estop)                   return "e-stop";
   if (millis() < AI_WARMUP_MS) return "อุ่นเครื่องหลังบูต";
   if (S.rxCount == 0)          return "ยังไม่ได้ข้อมูลจาก node";
+  if (millis() - S.lastNodeMs >= NODE_STALE_MS) return "node เงียบ (ดับ/แบตหมด/อยู่ไกล)";
+  if (S.quiet)                 return "ช่วงเวลาเงียบ (กลางคืน)";
   if ((int32_t)(S.holdUntilMs - millis()) > 0) return "เพิ่งดื่ม (พักป้าย)";
-  if (estop)                   return "e-stop";
+  if (S.cupAwaySinceMs && millis() - S.cupAwaySinceMs < CUP_AWAY_GRACE_MS) return "ยกแก้วอยู่ (น่าจะกำลังดื่ม)";
+  if (REQUIRE_PRESENT && !S.present) return "ไม่มีคนหน้าโต๊ะ";
+  if (S.signChangedMs && millis() - S.signChangedMs < MIN_DWELL_MS) return "ป้ายเพิ่งเปลี่ยน (กันกระพือ)";
   return nullptr;
 }
 
@@ -446,6 +517,10 @@ void printExplainLocked() {
   long motionAgoS = lastMotionMs ? (long)((millis() - lastMotionMs) / 1000) : -1;   // -1 = ยังไม่เคยขยับ
   Serial.printf("  present: PIR=%s (ขยับล่าสุด %ld วิที่แล้ว, -1=ยังไม่เคย) ultrasonic=%.0f cm (นับว่ามีคนถ้า 5-%.0f)\n",
                 pir ? "มีคน" : "ไม่มี", motionAgoS, S.lastDistCm, PRESENCE_CM);
+  Serial.printf("  ไม่ได้ดื่ม %.0f นาที (ยกเลยถ้า >= %.0f)  node ล่าสุด %lds ก่อน  แก้ว=%s  quiet=%s\n",
+                minsSince(S.lastDrinkMs), MAX_NO_DRINK_MIN,
+                S.lastNodeMs ? (long)((millis() - S.lastNodeMs) / 1000) : -1L,
+                S.drink.cupPresent() ? "วางอยู่" : "ไม่อยู่บนแท่น", S.quiet ? "ใช่" : "ไม่");
   const char *blk = raiseBlockedLocked();
   Serial.printf("  ป้าย=%s  node rx=%lu  uptime=%lus  %s%s\n", S.signUp ? "UP" : "DOWN",
                 (unsigned long)S.rxCount, (unsigned long)(millis() / 1000),
@@ -461,12 +536,19 @@ void runAIOnce(bool print) {
     computeFeaturesLocked(S.aiX);
     S.aiP = aiPredict(S.aiX);
     bool wasUp = S.signUp;
-    if (!S.signUp && !raiseBlockedLocked() && S.aiP >= AI_P_UP) setSignLocked(true, "AI: เสี่ยงดื่มน้อย");
-    else if (S.signUp && S.aiP <= AI_P_DOWN)                   setSignLocked(false, "AI: ความเสี่ยงลดลง");
+    bool overdue = minsSince(S.lastDrinkMs) >= MAX_NO_DRINK_MIN;     // กฎตายตัว ไม่ต้องรอ AI
+    bool dwellOk = millis() - S.signChangedMs >= MIN_DWELL_MS;
+    if (!S.signUp && !raiseBlockedLocked()) {
+      if (overdue)                setSignLocked(true, "ไม่ได้ดื่มนานเกิน MAX_NO_DRINK_MIN");
+      else if (S.aiP >= AI_P_UP)  setSignLocked(true, "AI: เสี่ยงดื่มน้อย");
+    } else if (S.signUp) {
+      if (S.quiet)                                  setSignLocked(false, "ช่วงเวลาเงียบ");
+      else if (dwellOk && !overdue && S.aiP <= AI_P_DOWN) setSignLocked(false, "AI: ความเสี่ยงลดลง");
+    }
     if (S.signUp != wasUp) printExplainLocked();     // AI เปลี่ยนป้าย → บอกเหตุผลทุกครั้ง
 
-    // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE
-    if (S.signUp && minsSince(S.signUpSinceMs) >= LINE_AFTER_MIN &&
+    // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE  (ไม่ส่งช่วงเวลาเงียบ)
+    if (S.signUp && !S.quiet && minsSince(S.signUpSinceMs) >= LINE_AFTER_MIN &&
         (S.lastLineMs == 0 || millis() - S.lastLineMs >= LINE_COOLDOWN_MS)) {
       snprintf(lm.text, sizeof(lm.text), "ถึงเวลาดื่มน้ำแล้ว 💧 ไม่ได้ดื่มมา %.0f นาที วันนี้ดื่มไป %.0f ml",
                minsSince(S.lastDrinkMs), S.mlToday);
@@ -571,6 +653,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(STOP_BTN), onStop, FALLING);
   ledcAttach(SERVO_PIN, 50, 16);
   dht.begin();
+  prefs.begin("coaster", false);
 
   rxQueue     = xQueueCreate(10, sizeof(RxItem));
   uploadQueue = xQueueCreate(6, sizeof(UpItem));
