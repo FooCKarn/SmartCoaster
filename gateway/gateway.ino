@@ -40,6 +40,7 @@ const uint32_t PIR_WINDOW_MS  = 5UL * 60UL * 1000UL;     // PIR ขยับภ�
 const int      SIGN_UP_DEG = 90, SIGN_DOWN_DEG = 0;
 const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 วินาที
 const uint32_t SENSE_EVERY_MS = 5000;   // อ่าน DHT11 / เสียง ทุก 5 วินาที
+const uint32_t RETRY_AGE_MS = 200;
 // =====================================
 
 DHT dht(DHT_PIN, DHT11);
@@ -51,7 +52,7 @@ QueueHandle_t uploadQueue;   // nodeTask → netTask  (UpItem)
 QueueHandle_t servoQueue;    // ใครก็ได้ → servoTask (มุมล่าสุด, ยาว 1 ใช้ xQueueOverwrite)
 QueueHandle_t lineQueue;     // aiTask / Serial → netTask (ข้อความ LINE)
 SemaphoreHandle_t stateMutex;
-struct LineMsg { char text[200]; };
+struct LineMsg { char text[200]; bool autoAlert; };
 
 // ---------------- interrupt (E2) ----------------
 volatile uint32_t motionCount = 0, lastMotionMs = 0;
@@ -77,6 +78,7 @@ struct State {
   bool signUp = false;
   uint32_t signUpSinceMs = 0, holdUntilMs = 0;
   uint32_t lastLineMs = 0;
+  bool lineSent = false;
   // สถิติ
   uint32_t rxCount = 0, dupCount = 0, uploadDrop = 0;
 } S;
@@ -100,6 +102,7 @@ void servoWrite(int deg) {
 void setSignLocked(bool up, const char *why) {
   if (estop || up == S.signUp) return;
   S.signUp = up;
+  S.lineSent = false;
   if (up) S.signUpSinceMs = millis();
   int deg = up ? SIGN_UP_DEG : SIGN_DOWN_DEG;
   xQueueOverwrite(servoQueue, &deg);
@@ -147,14 +150,34 @@ void sendAck(const RxItem &it) {
 }
 
 // กันข้อมูลซ้ำ (node ส่งซ้ำเมื่อ ACK หาย) จำ (boot_id, seq) ล่าสุด 32 ค่าต่อ node
-bool isDuplicate(const NodeMsg &m) {
-  static struct { uint8_t node; uint16_t boot; uint32_t seq; } seen[32];
+bool isDuplicate(const NodeMsg &m, bool *firstDup) {
+  static struct { uint8_t node; uint16_t boot; uint32_t seq; bool retried; } seen[32];
   static int head = 0;
   for (auto &s : seen)
-    if (s.seq == m.seq && s.boot == m.boot_id && s.node == m.node_id) return true;
-  seen[head] = {m.node_id, m.boot_id, m.seq};
+    if (s.seq == m.seq && s.boot == m.boot_id && s.node == m.node_id) {
+      *firstDup = !s.retried;
+      s.retried = true;
+      return true;
+    }
+  seen[head] = {m.node_id, m.boot_id, m.seq, m.age_ms >= RETRY_AGE_MS};
   head = (head + 1) % 32;
   return false;
+}
+
+struct LinkStat { bool used; uint8_t node; uint16_t boot; uint32_t retried; };
+LinkStat linkStat[8];
+
+LinkStat &linkStatFor(const NodeMsg &m) {
+  static int next = 0;
+  for (auto &l : linkStat)
+    if (l.used && l.node == m.node_id) {
+      if (l.boot != m.boot_id) { l.boot = m.boot_id; l.retried = 0; }
+      return l;
+    }
+  LinkStat &l = linkStat[next];
+  next = (next + 1) % 8;
+  l = {true, m.node_id, m.boot_id, 0};
+  return l;
 }
 
 // ---------------- การดื่ม ----------------
@@ -214,7 +237,13 @@ void nodeTask(void *) {
     if (xQueueReceive(rxQueue, &it, portMAX_DELAY) != pdTRUE) continue;
     sendAck(it);                          // E4: ตอบรับก่อน แม้จะเป็นค่าซ้ำ
     const NodeMsg &m = it.m;
-    if (isDuplicate(m)) { Lock l; S.dupCount++; continue; }
+    bool firstDup = false;
+    if (isDuplicate(m, &firstDup)) {
+      if (firstDup) linkStatFor(m).retried++;
+      Lock l; S.dupCount++; continue;
+    }
+    LinkStat &linkSt = linkStatFor(m);
+    if (m.age_ms >= RETRY_AGE_MS) linkSt.retried++;
 
     UpItem up = {};
     JsonDocument rec;
@@ -237,6 +266,7 @@ void nodeTask(void *) {
       rec["batt_mv"]   = m.batt_mv;
       rec["rssi"]      = it.rssi;
       if (m.age_ms) rec["age_ms"] = m.age_ms;          // มาช้าเพราะค้างในคิว node
+      rec["pkts_retried"] = linkSt.retried;
       rec["room_t"]    = S.roomT;
       rec["room_rh"]   = S.roomRH;
       rec["sound_p2p"] = S.soundP2P;
@@ -251,6 +281,7 @@ void nodeTask(void *) {
       }
       rec["sign_up"]   = S.signUp;
       rec["estop"]     = (bool)estop;
+      rec["line_sent"] = S.lineSent;
     }
     Serial.printf("RX node=%d seq=%lu w=%.1f d=%.1f rssi=%d age=%lums queued=%u\n",
                   m.node_id, (unsigned long)m.seq, m.weight_g, m.dist_cm, it.rssi,
@@ -328,7 +359,7 @@ void printAILocked() {
 }
 
 void runAIOnce(bool print) {
-  LineMsg lm;
+  LineMsg lm = {};
   bool sendLine = false;
   {
     Lock l;
@@ -344,6 +375,7 @@ void runAIOnce(bool print) {
       snprintf(lm.text, sizeof(lm.text), "ถึงเวลาดื่มน้ำแล้ว 💧 ไม่ได้ดื่มมา %.0f นาที วันนี้ดื่มไป %.0f ml",
                minsSince(S.lastDrinkMs), S.mlToday);
       S.lastLineMs = millis();
+      lm.autoAlert = true;
       sendLine = true;
     }
     if (print) printAILocked();
@@ -393,6 +425,7 @@ void netTask(void *) {
       int code = lineBroadcast(LINE_TOKEN, lm.text, &resp);
       Serial.printf("[LINE] broadcast -> %d\n", code);
       if (code != 200 && resp.length()) Serial.println(resp);
+      if (code == 200 && lm.autoAlert) { Lock l; if (S.signUp) S.lineSent = true; }
     }
   }
 }
@@ -411,7 +444,7 @@ void handleSerialCommands() {
   while (Serial.available()) {
     const char c = Serial.read();
     if (c == 'm') {
-      LineMsg lm;
+      LineMsg lm = {};
       strlcpy(lm.text, "ถึงเวลาดื่มน้ำแล้ว 💧 (ทดสอบ)", sizeof(lm.text));
       xQueueSend(lineQueue, &lm, 0);
     } else if (c == 'q') {

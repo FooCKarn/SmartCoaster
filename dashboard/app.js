@@ -378,7 +378,7 @@ function toView(latest, drinks) {
     last_sip_ts: last ? last.ts : null,
     last_sip_ml: last ? Math.round(last.ml) : null,
     ai_risk: typeof p !== "number" ? null : p >= AI_P_UP ? "high" : p > AI_P_DOWN ? "moderate" : "normal",
-    alert_state: latest.estop ? "estop" : latest.sign_up ? "servo_up" : "idle",
+    alert_state: latest.estop ? "estop" : latest.line_sent ? "line_sent" : latest.sign_up ? "servo_up" : "idle",
     week_ml: drinks.length ? week : [],
     sips: drinks.slice(-6).reverse().map((d) => ({
       time: clock(d.ts),

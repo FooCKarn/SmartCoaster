@@ -128,7 +128,8 @@ gateway ควรพิมพ์ `RX node=1 seq=... ` ทุก 5 วินา�
 ```
 /readings/<ts>-<node>-<seq>  ทุกค่าที่ gateway ได้รับ: node_id, seq, weight_g, dist_cm, batt_mv, rssi, age_ms,
                              room_t, room_rh, sound_p2p, motion_count, cup, ml_today, mins_since_drink,
-                             ai_p, ai_x[7], sign_up, estop, ts (demo: true เมื่อเปิดโหมดเร่งเวลา)
+                             ai_p, ai_x[7], sign_up, estop, line_sent, pkts_retried,
+                             ts (demo: true เมื่อเปิดโหมดเร่งเวลา)
 /latest                      ค่าล่าสุด (dashboard ใช้แสดงการ์ด)
 /drinks/<key>                การดื่มแต่ละครั้ง: ml, ml_today, ts  (ข้อมูลเทรน AI)
 /refills/<key>               การเติมน้ำ
