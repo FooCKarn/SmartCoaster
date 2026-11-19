@@ -281,8 +281,13 @@ if (currentPage === "sensors" && hasChart) {
         ],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         animation: false,
-        scales: { y: { grid: { color: "#f1f5f9" } } },
+        scales: {
+          x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+          y: { grid: { color: "#f1f5f9" } },
+        },
       },
     });
   }
