@@ -55,6 +55,10 @@ const int      SERVO_SPEED_US = 200;   // ห่างจากจุดหย�
 const uint32_t SERVO_MOVE_MS  = 450;   // หมุนนานเท่านี้แล้วหยุด ปรับจนป้ายยกได้มุมที่ต้องการ
 const int      SERVO_UP_DIR   = -1;    // ทิศตอนยกป้าย (หันหน้าเข้าด้านที่มีธง) 1 = ธงพักด้านขวา -1 = ธงพักด้านซ้าย
 const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 วินาที
+// อุ่นเครื่องหลังบูต: ช่วงนี้ AI คำนวณได้แต่ห้ามยกป้าย
+// เพราะยังไม่มีข้อมูลจาก node / PIR ยังไม่นิ่ง → AI จะเข้าใจว่า "ไม่มีคน" (present=0) แล้วยกป้ายทันทีหลังอัปโค้ด
+// เวลาจริง ไม่คูณ DEMO_SPEED (PIR ส่วนใหญ่ต้องอุ่นเครื่อง ~30–60 วินาที)
+const uint32_t AI_WARMUP_MS = 60000;
 const uint32_t SENSE_EVERY_MS = 5000;   // อ่าน DHT11 / เสียง ทุก 5 วินาที
 const uint32_t RETRY_AGE_MS = 200;
 // =====================================
@@ -123,7 +127,7 @@ void setSignLocked(bool up, const char *why) {
   if (up) S.signUpSinceMs = millis();
   int deg = up ? SIGN_UP_DEG : SIGN_DOWN_DEG;
   xQueueOverwrite(servoQueue, &deg);
-  Serial.printf("[SIGN] %s (%s)\n", up ? "UP" : "DOWN", why);
+  Serial.printf("[SIGN] %s (%s)  p=%.2f\n", up ? "UP" : "DOWN", why, S.aiP);
 }
 
 #if SERVO_MODE == 2
@@ -407,9 +411,46 @@ void computeFeaturesLocked(float *x) {
 }
 
 void printAILocked() {
-  Serial.printf("[AI] p=%.2f sign=%s |", S.aiP, S.signUp ? "UP" : "DOWN");
+  const char *blk = raiseBlockedLocked();
+  Serial.printf("[AI] p=%.2f sign=%s%s%s |", S.aiP, S.signUp ? "UP" : "DOWN",
+                blk ? " (ห้ามยก: " : "", blk ? blk : "");
+  if (blk) Serial.print(")");
   for (int i = 0; i < AI_N_FEATURES; i++) Serial.printf(" %s=%.1f", AI_FEATURE_NAMES[i], S.aiX[i]);
   Serial.println();
+}
+
+// ยังห้ามยกป้ายอยู่ไหม คืนเหตุผล (nullptr = ยกได้)
+const char *raiseBlockedLocked() {
+  if (millis() < AI_WARMUP_MS) return "อุ่นเครื่องหลังบูต";
+  if (S.rxCount == 0)          return "ยังไม่ได้ข้อมูลจาก node";
+  if ((int32_t)(S.holdUntilMs - millis()) > 0) return "เพิ่งดื่ม (พักป้าย)";
+  if (estop)                   return "e-stop";
+  return nullptr;
+}
+
+// อธิบายว่าทำไม AI ได้ค่านี้ (พิมพ์ w ใน Serial หรือพิมพ์เองตอน AI ยก/ลดป้าย)
+// แต่ละ feature: ค่าที่วัดได้, ค่าเฉลี่ยตอนเทรน, และ "แรงดัน" (+ = ดันให้ยกป้าย, - = ดันให้ลด)
+void printExplainLocked() {
+  float z = AI_B;
+  Serial.println("----- [WHY] AI อธิบายตัวเอง -----");
+  Serial.println("  feature              now     mean   push   (push + = ดันให้ยกป้าย, - = ดันให้ลด)");
+  for (int i = 0; i < AI_N_FEATURES; i++) {
+    float c = AI_W[i] * (S.aiX[i] - AI_MEAN[i]) / AI_STD[i];
+    z += c;
+    Serial.printf("  %-17s %7.1f %7.1f %+6.2f %s\n", AI_FEATURE_NAMES[i], S.aiX[i], AI_MEAN[i], c,
+                  c > 0.1f ? "<- ดันขึ้น" : (c < -0.1f ? "<- ดันลง" : ""));
+  }
+  Serial.printf("  ค่าตั้งต้น %+.2f  รวม z=%.2f  -> p=%.2f  (ยกเมื่อ p>=%.2f, ลดเมื่อ p<=%.2f)\n",
+                AI_B, z, S.aiP, AI_P_UP, AI_P_DOWN);
+  bool pir = lastMotionMs != 0 && millis() - lastMotionMs < PIR_WINDOW_MS;
+  long motionAgoS = lastMotionMs ? (long)((millis() - lastMotionMs) / 1000) : -1;   // -1 = ยังไม่เคยขยับ
+  Serial.printf("  present: PIR=%s (ขยับล่าสุด %ld วิที่แล้ว, -1=ยังไม่เคย) ultrasonic=%.0f cm (นับว่ามีคนถ้า 5-%.0f)\n",
+                pir ? "มีคน" : "ไม่มี", motionAgoS, S.lastDistCm, PRESENCE_CM);
+  const char *blk = raiseBlockedLocked();
+  Serial.printf("  ป้าย=%s  node rx=%lu  uptime=%lus  %s%s\n", S.signUp ? "UP" : "DOWN",
+                (unsigned long)S.rxCount, (unsigned long)(millis() / 1000),
+                blk ? "ห้ามยกตอนนี้: " : "AI ยกป้ายได้", blk ? blk : "");
+  Serial.println("---------------------------------");
 }
 
 void runAIOnce(bool print) {
@@ -419,9 +460,10 @@ void runAIOnce(bool print) {
     Lock l;
     computeFeaturesLocked(S.aiX);
     S.aiP = aiPredict(S.aiX);
-    bool holding = (int32_t)(S.holdUntilMs - millis()) > 0;
-    if (!S.signUp && !holding && S.aiP >= AI_P_UP) setSignLocked(true, "AI: เสี่ยงดื่มน้อย");
-    else if (S.signUp && S.aiP <= AI_P_DOWN)        setSignLocked(false, "AI: ความเสี่ยงลดลง");
+    bool wasUp = S.signUp;
+    if (!S.signUp && !raiseBlockedLocked() && S.aiP >= AI_P_UP) setSignLocked(true, "AI: เสี่ยงดื่มน้อย");
+    else if (S.signUp && S.aiP <= AI_P_DOWN)                   setSignLocked(false, "AI: ความเสี่ยงลดลง");
+    if (S.signUp != wasUp) printExplainLocked();     // AI เปลี่ยนป้าย → บอกเหตุผลทุกครั้ง
 
     // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE
     if (S.signUp && minsSince(S.signUpSinceMs) >= LINE_AFTER_MIN &&
@@ -506,6 +548,7 @@ void handleSerialCommands() {
       if (usage >= 0) Serial.printf("LINE messages used this month: %d\n", usage);
       else Serial.println("Failed to read LINE message usage");
     } else if (c == 'a') { runAIOnce(true); }
+    else if (c == 'w') { runAIOnce(false); Lock l; printExplainLocked(); }
     else if (c == 'u') { Lock l; setSignLocked(true, "สั่งจาก Serial"); }
     else if (c == 'n') { Lock l; setSignLocked(false, "สั่งจาก Serial"); }
     else if (c == 'c') {
@@ -561,7 +604,7 @@ void setup() {
   xTaskCreate(netTask,    "net",    12288, nullptr, 1, nullptr);   // HTTPS/TLS ใช้ stack เยอะ
 
   Serial.printf("Gateway ready  (AI model: %s, DEMO_SPEED=%d)\n", AI_TRAINED_ON, DEMO_SPEED);
-  Serial.println("Serial: a=ดูค่า AI  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  q=โควตา LINE");
+  Serial.println("Serial: a=ดูค่า AI  w=AI อธิบายว่าทำไมยก/ไม่ยก  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  q=โควตา LINE");
 }
 
 void loop() {
