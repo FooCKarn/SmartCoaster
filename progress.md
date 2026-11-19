@@ -18,6 +18,7 @@
 - [x] ตั้ง MT3608 ให้ออก 5 V แล้ว มี test `t13_battery_18650` และ `t14_mt3608`
 - [x] วงจรทั้งระบบแบบชิ้นส่วนจริง ใช้ปุ่มกดแทนสวิตช์ มีทั้งแบบมี LDO และแบบ v2 (`docs/Circuit.png`)
 - [x] เพิ่มโค้ดดีบักไฟ node ตอนใช้แบต (PR #8, merge แล้ว): ไฟสถานะ GPIO2, บันทึกสาเหตุรีเซ็ต/brownout ใน NVS, ลด TX power เป็น 11 dBm
+- [x] แก้ error ตอนคอมไพล์ gateway ใน Arduino IDE (รอ Verify ซ้ำ): ลง ArduinoJson 7, DHT sensor library + Adafruit Unified Sensor, HX711 (bogde) และแก้ error `LinkStat does not name a type` (ประกาศ `struct LinkStat;` ไว้บนสุดของ `gateway.ino`)
 
 ## ติดอยู่
 - [ ] **node ไม่ส่งข้อมูลตอนใช้แบต** เสียบ USB แล้วส่งได้ แต่ใช้แบตแล้วไม่ส่ง น่าจะเป็นเพราะไฟตกตอนส่ง

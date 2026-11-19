@@ -21,6 +21,10 @@
 #include "drink_detect.h"
 #include "ai_model.h"
 
+// Arduino IDE สร้าง prototype ของฟังก์ชันไว้บนสุดของไฟล์อัตโนมัติ
+// ต้องประกาศชื่อ struct ไว้ก่อน ไม่งั้น linkStatFor() จะ error ว่า LinkStat does not name a type
+struct LinkStat;
+
 const int DHT_PIN = 14, PIR_PIN = 27, SND_AO = 35, SND_DO = 32;
 const int SERVO_PIN = 18, STOP_BTN = 33, LED = 2;
 
@@ -166,6 +170,7 @@ bool isDuplicate(const NodeMsg &m, bool *firstDup) {
 
 struct LinkStat { bool used; uint8_t node; uint16_t boot; uint32_t retried; };
 LinkStat linkStat[8];
+LinkStat &linkStatFor(const NodeMsg &m);  // ประกาศเอง IDE จะได้ไม่สร้าง prototype ซ้ำ
 
 LinkStat &linkStatFor(const NodeMsg &m) {
   static int next = 0;
