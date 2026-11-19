@@ -3,6 +3,7 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 #include <HX711.h>
+#include <Preferences.h>
 #include "msg.h"
 
 // ===== แก้ 3 ค่านี้ =====
@@ -27,6 +28,20 @@ const uint32_t MOCK_SIP_EVERY_MS = 60000;      // จิบอัตโนมั
 const uint8_t NODE_ID = 1;
 const int HX_DT = 19, HX_SCK = 18, TRIG = 25, ECHO = 26;
 const uint32_t SEND_EVERY_MS = 5000;
+
+// ===== ดีบักตอนใช้แบต (ไม่มี Serial ให้ดู) =====
+// LED บนบอร์ด (GPIO2 สีน้ำเงิน) บอกสถานะ:
+//   เปิดเครื่อง        = กะพริบเร็ว 3 ครั้ง  (ถ้าเห็น 3 ครั้งซ้ำทุกไม่กี่วินาที = บอร์ดรีเซ็ตวน = ไฟตก)
+//   ส่งแล้ว gateway ตอบ = กะพริบสั้น 1 ครั้งทุก 5 วิ
+//   ส่งไม่ถึง/ไม่มี ACK  = ติดค้าง 1 วิ ทุก 5 วิ
+// สถิติจดลง flash (NVS) แล้วเสียบ USB เปิด Serial Monitor ดูทีหลังได้ (พิมพ์ตอนบูต)
+const int      STATUS_LED   = 2;
+const uint32_t SAVE_EVERY_MS = 30000;
+// ลดกำลังส่ง = ลดกระแสพุ่งตอนส่ง ช่วยให้ LDO จ่ายทัน วางบนโต๊ะห่าง gateway ไม่กี่เมตรพอ
+// หน่วย 0.25 dBm: 44 = 11 dBm (ค่าเดิมของ ESP32 = 80 = 20 dBm)  ใส่ 0 = ไม่ลด
+const int8_t   TX_POWER_QDBM = 44;
+Preferences dbg;
+uint32_t noAckRounds = 0;
 
 // ===== E4: ACK + คิวส่งซ้ำ =====
 // ทุกค่าที่วัดเข้าคิวก่อน แล้วส่งจากหัวคิว (เก่าสุดก่อน) รอ AckMsg จาก gateway
@@ -97,6 +112,7 @@ void mockHandleSerial() {
     if (c != '\n' && c != '\r') { line += c; continue; }
     line.trim();
     if (line == "d")      { mockSip(); }
+    else if (line == "c") { dbg.clear(); Serial.println("ล้างสถิติ debug แล้ว"); }
     else if (line == "r") { mockWeight = MOCK_FULL_G; Serial.println("[MOCK] refill"); }
     else if (line == "l") { mockLifted = true;  Serial.println("[MOCK] cup lifted"); }
     else if (line == "p") { mockLifted = false; Serial.println("[MOCK] cup placed"); }
@@ -124,8 +140,67 @@ float readWeight() {
 }
 #endif
 
+const char *resetText(esp_reset_reason_t r) {
+  switch (r) {
+    case ESP_RST_POWERON:  return "POWERON (เพิ่งจ่ายไฟ)";
+    case ESP_RST_BROWNOUT: return "BROWNOUT (ไฟตก!)";
+    case ESP_RST_EXT:      return "EXT (ปุ่ม EN / เปิด Serial)";
+    case ESP_RST_SW:       return "SW";
+    case ESP_RST_PANIC:    return "PANIC (โปรแกรมล่ม)";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      return "WATCHDOG (ค้าง)";
+    case ESP_RST_DEEPSLEEP:return "DEEPSLEEP";
+    default:               return "อื่นๆ";
+  }
+}
+
+void blink(int n, int onMs, int offMs) {
+  for (int i = 0; i < n; i++) {
+    digitalWrite(STATUS_LED, HIGH); delay(onMs);
+    digitalWrite(STATUS_LED, LOW);  delay(offMs);
+  }
+}
+
+// อ่านสถิติรอบก่อน (เช่นรอบที่รันจากแบต) แล้วนับรอบใหม่
+void debugBoot() {
+  esp_reset_reason_t reason = esp_reset_reason();
+  dbg.begin("nodedbg", false);
+  uint32_t boots  = dbg.getUInt("boots", 0) + 1;
+  uint32_t brown  = dbg.getUInt("brown", 0) + (reason == ESP_RST_BROWNOUT ? 1 : 0);
+  uint32_t panics = dbg.getUInt("panic", 0) + (reason == ESP_RST_PANIC ? 1 : 0);
+  Serial.println();
+  Serial.println("===== node debug (สถิติจาก flash) =====");
+  Serial.printf("รีเซ็ตครั้งนี้เพราะ: %s\n", resetText(reason));
+  Serial.printf("รอบก่อน: รันได้ %lu s, acked=%lu, ส่งไม่ถึง=%lu รอบ\n",
+                (unsigned long)dbg.getUInt("upS", 0), (unsigned long)dbg.getUInt("acked", 0),
+                (unsigned long)dbg.getUInt("noAck", 0));
+  Serial.printf("สะสม: บูต %lu ครั้ง, BROWNOUT %lu ครั้ง, PANIC %lu ครั้ง  (ส่ง c ใน Serial = ล้าง)\n",
+                (unsigned long)boots, (unsigned long)brown, (unsigned long)panics);
+  Serial.println("=======================================");
+  dbg.putUInt("boots", boots);
+  dbg.putUInt("brown", brown);
+  dbg.putUInt("panic", panics);
+  dbg.putUInt("upS", 0);
+  dbg.putUInt("acked", 0);
+  dbg.putUInt("noAck", 0);
+}
+
+void debugSave() {
+  static uint32_t lastSave = 0;
+  if (millis() - lastSave < SAVE_EVERY_MS) return;
+  lastSave = millis();
+  dbg.putUInt("upS", millis() / 1000);
+  dbg.putUInt("acked", ackedCount);
+  dbg.putUInt("noAck", noAckRounds);
+}
+
 void setup() {
   Serial.begin(115200);
+  pinMode(STATUS_LED, OUTPUT);
+  delay(300);
+  debugBoot();
+  blink(3, 80, 120);
   pinMode(TRIG, OUTPUT); pinMode(ECHO, INPUT);
 #if MOCK_WEIGHT
   randomSeed(esp_random());
@@ -142,7 +217,11 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   esp_wifi_set_channel(WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
-  if (esp_now_init() != ESP_OK) { Serial.println("ESP-NOW init FAILED"); while (true) delay(1000); }
+  if (TX_POWER_QDBM > 0) esp_wifi_set_max_tx_power(TX_POWER_QDBM);
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init FAILED");
+    while (true) blink(10, 50, 50);          // กะพริบรัวไม่หยุด = ESP-NOW เริ่มไม่ได้
+  }
   esp_now_register_send_cb(onSent);
   esp_now_register_recv_cb(onRecv);
 
@@ -197,7 +276,12 @@ void flushQueue() {
 void loop() {
 #if MOCK_WEIGHT
   mockHandleSerial();
+#else
+  while (Serial.available()) {
+    if (Serial.read() == 'c') { dbg.clear(); Serial.println("ล้างสถิติ debug แล้ว"); }
+  }
 #endif
+  debugSave();
   static uint32_t last = 0;
   if (millis() - last < SEND_EVERY_MS) return;
   last = millis();
@@ -212,7 +296,14 @@ void loop() {
   msg.dist_cm  = readCm();
   msg.batt_mv  = 0;
   enqueue(msg);
+  uint32_t ackedBefore = ackedCount;
   flushQueue();
+  if (ackedCount > ackedBefore) {
+    blink(1, 40, 0);                        // gateway ตอบแล้ว
+  } else {
+    noAckRounds++;
+    digitalWrite(STATUS_LED, HIGH); delay(1000); digitalWrite(STATUS_LED, LOW);  // ส่งไม่ถึง
+  }
 
   Serial.printf("%sseq=%lu  w=%.1f g  d=%.1f cm  | acked=%lu resent=%lu queued=%d dropped=%lu macFail=%lu\n",
                 MOCK_WEIGHT ? "[MOCK] " : "", msg.seq, msg.weight_g, msg.dist_cm,
