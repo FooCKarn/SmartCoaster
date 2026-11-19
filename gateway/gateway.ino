@@ -21,6 +21,7 @@
 #include "cloud.h"
 #include "drink_detect.h"
 #include "ai_model.h"
+#include "line_notify.h"   // ตัดสินใจเวลา/ระดับ/ข้อความ LINE ตามค่า AI
 
 // Arduino IDE สร้าง prototype ของฟังก์ชันไว้บนสุดของไฟล์อัตโนมัติ
 // ต้องประกาศชื่อ struct ไว้ก่อน ไม่งั้น linkStatFor() จะ error ว่า LinkStat does not name a type
@@ -38,8 +39,16 @@ const int SERVO_PIN = 18, STOP_BTN = 33, LED = 2;
 const float    AI_P_UP        = 0.70f;  // ความเสี่ยง ≥ นี้ → ยกป้าย (บนชุด test: ป้ายยก ~27 % ของเวลา, ถูก 72 %)
 const float    AI_P_DOWN      = 0.62f;  // ความเสี่ยง ≤ นี้ → ลดป้าย (ห่างกันไว้กันป้ายกระพือ)
 const float    HOLD_DOWN_MIN  = 15;     // ดื่มแล้ว ป้ายลงค้างอย่างน้อยกี่นาที
-const float    LINE_AFTER_MIN = 10;     // ป้ายยกค้างกี่นาทีแล้วยังไม่ดื่ม → ส่ง LINE
-const uint32_t LINE_COOLDOWN_MS = 30UL * 60UL * 1000UL;  // ส่ง LINE ห่างกันอย่างน้อย 30 นาที (เวลาจริง กันโควตาหมด)
+// LINE: ปรับละเอียดได้ใน LineNotifyConfig (line_notify.h) ค่าด้านล่างถูกนำไปใส่ใน setup()
+const float    LINE_AFTER_MIN   = 10;   // ป้ายยกค้างกี่นาทีแล้วยังไม่ดื่ม → ส่ง LINE ครั้งแรก (นาที คูณ DEMO_SPEED)
+const float    LINE_REPEAT_MIN  = 30;   // ยังไม่ดื่ม → เตือนซ้ำห่างกันกี่นาที
+const float    LINE_MIN_GAP_MIN = 20;   // ทุกข้อความห่างกันอย่างน้อย (กันโควตาหมด)
+const int      LINE_MAX_PER_DAY = 6;    // เพดานข้อความอัตโนมัติต่อวัน
+// ส่งหาใคร: ตั้ง LINE_USER_ID ใน secrets.h (LINE Developers → Messaging API → "Your user ID") = ส่งเฉพาะเจ้าของ (push)
+// ถ้าไม่ตั้ง จะ broadcast หาเพื่อนทุกคนของ Official Account เหมือนเดิม
+#ifndef LINE_USER_ID
+#define LINE_USER_ID ""
+#endif
 const float    PRESENCE_CM    = 80;     // ultrasonic < นี้ = มีคนนั่งหน้าแก้ว
 const uint32_t PIR_WINDOW_MS  = 5UL * 60UL * 1000UL;     // PIR ขยับภายใน 5 นาที = มีคน
 const int      SIGN_UP_DEG = 90, SIGN_DOWN_DEG = 0;
@@ -85,7 +94,7 @@ QueueHandle_t uploadQueue;   // nodeTask → netTask  (UpItem)
 QueueHandle_t servoQueue;    // ใครก็ได้ → servoTask (มุมล่าสุด, ยาว 1 ใช้ xQueueOverwrite)
 QueueHandle_t lineQueue;     // aiTask / Serial → netTask (ข้อความ LINE)
 SemaphoreHandle_t stateMutex;
-struct LineMsg { char text[200]; bool autoAlert; };
+struct LineMsg { char text[480]; bool autoAlert; uint32_t drinkStamp; };   // ไทย 3 ไบต์/ตัว จึงต้องใหญ่ ; drinkStamp = lastDrinkMs ตอนสร้าง ไว้เช็คว่าดื่มไปแล้วหรือยัง
 
 // ---------------- interrupt (E2) ----------------
 volatile uint32_t motionCount = 0, lastMotionMs = 0;
@@ -115,7 +124,7 @@ struct State {
   float aiP = NAN;
   bool signUp = false;
   uint32_t signUpSinceMs = 0, holdUntilMs = 0;
-  uint32_t lastLineMs = 0;
+  LineNotifier ln;                  // ตัวตัดสินใจส่ง LINE (line_notify.h)
   bool lineSent = false;
   // สถิติ
   uint32_t rxCount = 0, dupCount = 0, uploadDrop = 0;
@@ -128,6 +137,7 @@ struct Lock {
 
 // นาทีที่ผ่านไป (คูณ DEMO_SPEED แล้ว)
 float minsSince(uint32_t ms) { return (millis() - ms) / 60000.0f * DEMO_SPEED; }
+float nowMin() { return millis() / 60000.0f * DEMO_SPEED; }       // "นาทีในระบบ" ให้ LineNotifier
 uint32_t scaledMinToMs(float m) { return (uint32_t)(m * 60000.0f / DEMO_SPEED); }
 
 // ---------------- servo ----------------
@@ -547,18 +557,27 @@ void runAIOnce(bool print) {
     }
     if (S.signUp != wasUp) printExplainLocked();     // AI เปลี่ยนป้าย → บอกเหตุผลทุกครั้ง
 
-    // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE  (ไม่ส่งช่วงเวลาเงียบ)
-    if (S.signUp && !S.quiet && minsSince(S.signUpSinceMs) >= LINE_AFTER_MIN &&
-        (S.lastLineMs == 0 || millis() - S.lastLineMs >= LINE_COOLDOWN_MS)) {
-      snprintf(lm.text, sizeof(lm.text), "ถึงเวลาดื่มน้ำแล้ว 💧 ไม่ได้ดื่มมา %.0f นาที วันนี้ดื่มไป %.0f ml",
-               minsSince(S.lastDrinkMs), S.mlToday);
-      S.lastLineMs = millis();
+    // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE  ระดับ (สุภาพ/ด่วน) และข้อความขึ้นกับ p ของ AI (ดู line_notify.h)
+    LineNotifyInput ni;
+    ni.signUp = S.signUp;  ni.quiet = S.quiet;  ni.p = S.aiP;
+    ni.minsSinceDrink = minsSince(S.lastDrinkMs);
+    ni.minsSignUp = S.signUp ? minsSince(S.signUpSinceMs) : 0;
+    ni.mlLastHour = S.aiX[1];  ni.mlToday = S.mlToday;  ni.roomT = S.roomT;
+    ni.dayId = S.todayYday;
+    LineLevel lv = S.ln.decide(ni, nowMin());
+    if (lv != LN_NONE) {
+      lineBuildText(lm.text, sizeof(lm.text), lv, ni, S.ln.sentInEpisode());
       lm.autoAlert = true;
+      lm.drinkStamp = S.lastDrinkMs;
+      S.ln.markQueued(nowMin());
       sendLine = true;
+      Serial.printf("[LINE] สร้างข้อความ %s  p=%.2f\n", lv == LN_URGENT ? "URGENT" : "GENTLE", S.aiP);
     }
     if (print) printAILocked();
   }
-  if (sendLine) xQueueSend(lineQueue, &lm, 0);
+  if (sendLine && xQueueSend(lineQueue, &lm, 0) != pdTRUE) {   // คิวเต็ม → ยกเลิก ไม่ให้ค้างสถานะ pending
+    Lock l; S.ln.onCancel();
+  }
 }
 
 void aiTask(void *) {
@@ -599,11 +618,27 @@ void netTask(void *) {
 
     LineMsg lm;
     if (xQueueReceive(lineQueue, &lm, 0) == pdTRUE) {
-      String resp;
-      int code = lineBroadcast(LINE_TOKEN, lm.text, &resp);
-      Serial.printf("[LINE] broadcast -> %d\n", code);
-      if (code != 200 && resp.length()) Serial.println(resp);
-      if (code == 200 && lm.autoAlert) { Lock l; if (S.signUp) S.lineSent = true; }
+      bool stale = false;
+      if (lm.autoAlert) {                // ระหว่างรอส่ง ผู้ใช้ดื่มไปแล้ว / ป้ายลงแล้ว → ไม่ส่งข้อความเตือนที่ล้าสมัย
+        Lock l;
+        stale = !S.signUp || S.quiet || S.lastDrinkMs != lm.drinkStamp;
+        if (stale) S.ln.onCancel();
+      }
+      if (stale) {
+        Serial.println("[LINE] ยกเลิก: ดื่มแล้ว/ป้ายลงระหว่างรอส่ง");
+      } else {
+        String resp;
+        const bool toUser = strlen(LINE_USER_ID) > 0;
+        int code = toUser ? linePush(LINE_TOKEN, LINE_USER_ID, lm.text, &resp)
+                          : lineBroadcast(LINE_TOKEN, lm.text, &resp);
+        Serial.printf("[LINE] %s -> %d\n", toUser ? "push" : "broadcast", code);
+        if (code != 200 && resp.length()) Serial.println(resp);
+        if (lm.autoAlert) {
+          Lock l;
+          S.ln.onResult(code == 200, nowMin());
+          if (code == 200 && S.signUp) S.lineSent = true;
+        }
+      }
     }
   }
 }
@@ -629,6 +664,11 @@ void handleSerialCommands() {
       int usage = lineConsumption(LINE_TOKEN);
       if (usage >= 0) Serial.printf("LINE messages used this month: %d\n", usage);
       else Serial.println("Failed to read LINE message usage");
+    } else if (c == 'l') {
+      Lock l;
+      Serial.printf("[LINE] วันนี้ส่งแล้ว %d/%d  รอบนี้ %d ข้อความ  pending=%s  ปลายทาง=%s\n",
+                    S.ln.sentToday(), S.ln.cfg.maxPerDay, S.ln.sentInEpisode(),
+                    S.ln.pending() ? "ใช่" : "ไม่", strlen(LINE_USER_ID) ? "push เจ้าของ" : "broadcast");
     } else if (c == 'a') { runAIOnce(true); }
     else if (c == 'w') { runAIOnce(false); Lock l; printExplainLocked(); }
     else if (c == 'u') { Lock l; setSignLocked(true, "สั่งจาก Serial"); }
@@ -659,6 +699,11 @@ void setup() {
   uploadQueue = xQueueCreate(6, sizeof(UpItem));
   servoQueue  = xQueueCreate(1, sizeof(int));
   lineQueue   = xQueueCreate(2, sizeof(LineMsg));
+  S.ln.cfg.firstAfterMin  = LINE_AFTER_MIN;
+  S.ln.cfg.repeatAfterMin = LINE_REPEAT_MIN;
+  S.ln.cfg.minGapMin      = LINE_MIN_GAP_MIN;
+  S.ln.cfg.urgentNoDrinkMin = MAX_NO_DRINK_MIN;   // ตรงกับกฎตายตัวที่ยกป้ายเลย
+  S.ln.cfg.maxPerDay      = LINE_MAX_PER_DAY;
   stateMutex  = xSemaphoreCreateMutex();
 
   WiFi.mode(WIFI_STA);
@@ -683,11 +728,11 @@ void setup() {
   xTaskCreate(servoTask,  "servo",  2048,  nullptr, 4, nullptr);
   xTaskCreate(nodeTask,   "node",   6144,  nullptr, 3, nullptr);
   xTaskCreate(sensorTask, "sensor", 3072,  nullptr, 2, nullptr);
-  xTaskCreate(aiTask,     "ai",     4096,  nullptr, 2, nullptr);
+  xTaskCreate(aiTask,     "ai",     6144,  nullptr, 2, nullptr);
   xTaskCreate(netTask,    "net",    12288, nullptr, 1, nullptr);   // HTTPS/TLS ใช้ stack เยอะ
 
   Serial.printf("Gateway ready  (AI model: %s, DEMO_SPEED=%d)\n", AI_TRAINED_ON, DEMO_SPEED);
-  Serial.println("Serial: a=ดูค่า AI  w=AI อธิบายว่าทำไมยก/ไม่ยก  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  q=โควตา LINE");
+  Serial.println("Serial: a=ดูค่า AI  w=AI อธิบายว่าทำไมยก/ไม่ยก  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  l=สถานะ LINE  q=โควตา LINE");
 }
 
 void loop() {

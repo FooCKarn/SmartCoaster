@@ -96,9 +96,10 @@ PlatformIO ดาวน์โหลด framework และไลบรารี�
 1. คัดลอก `gateway/secrets.example.h` เป็น `gateway/secrets.h` แล้วใส่ Wi-Fi (2.4 GHz), URL ของ Firebase RTDB และ LINE credentials
 2. อัปโหลด `gateway/gateway.ino` จด `WiFi channel = X` ที่พิมพ์ออกมา
 
-คำสั่ง Serial ของ gateway: `a` ดูค่า AI, `s` สถานะ (คิว/flash/heap), `u`/`n` ยก/ลดป้าย, `c` ปลด e-stop,
-`m` ส่ง LINE ทดสอบ (ใช้โควตาจริง), `q` ดูโควตา LINE
-LINE อัตโนมัติจะส่งเมื่อ AI ยกป้ายค้างไว้ 10 นาทีแล้วยังไม่ดื่ม (ห่างกันอย่างน้อย 30 นาที)
+คำสั่ง Serial ของ gateway: `a` ดูค่า AI, `w` อธิบายการตัดสินใจ AI, `s` สถานะ (คิว/flash/heap), `u`/`n` ยก/ลดป้าย, `c` ปลด e-stop,
+`m` ส่ง LINE ทดสอบ (ใช้โควตาจริง), `l` ดูสถานะ LINE, `q` ดูโควตา LINE
+LINE อัตโนมัติจะส่งเมื่อ AI ยกป้ายค้างไว้ 10 นาทีแล้วยังไม่ดื่ม
+(ส่งซ้ำทุก 30 นาที, เพดาน 6 ข้อความ/วัน) และรองรับ push ถึงบัญชีเจ้าของหรือ broadcast แบบเดิม
 
 ### 4. Node
 แก้ 3 ค่าบนสุดของ `node/node.ino`: `GATEWAY_MAC`, `WIFI_CHANNEL`, `CAL_FACTOR` แล้วอัปโหลด
