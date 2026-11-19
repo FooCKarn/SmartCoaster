@@ -42,6 +42,18 @@ const uint32_t LINE_COOLDOWN_MS = 30UL * 60UL * 1000UL;  // ส่ง LINE ห�
 const float    PRESENCE_CM    = 80;     // ultrasonic < นี้ = มีคนนั่งหน้าแก้ว
 const uint32_t PIR_WINDOW_MS  = 5UL * 60UL * 1000UL;     // PIR ขยับภายใน 5 นาที = มีคน
 const int      SIGN_UP_DEG = 90, SIGN_DOWN_DEG = 0;
+// SERVO_MODE: เลือกตามรุ่นเซอร์โวที่ใช้
+//   0 = ไม่ส่งพัลส์เลย เซอร์โวหยุดนิ่ง (AI ยังสั่งยก/ลดป้ายใน Serial และ dashboard ตามปกติ)
+//   1 = รุ่น 180° สั่งเป็นมุม SIGN_UP_DEG / SIGN_DOWN_DEG
+//   2 = รุ่น 360° (ตัวที่ใช้อยู่) พัลส์คุมความเร็ว ไม่ได้คุมมุม เลยหมุนตามเวลา SERVO_MOVE_MS แล้วหยุด
+#ifndef SERVO_MODE
+#define SERVO_MODE 2
+#endif
+// ใช้เฉพาะ SERVO_MODE 2
+const int      SERVO_STOP_US  = 1500;  // พัลส์ที่เซอร์โวหยุด ใช้คำนวณทิศและความเร็ว
+const int      SERVO_SPEED_US = 200;   // ห่างจากจุดหยุดเท่านี้ = ความเร็ว (มาก = เร็ว ไม่เกินราว 900)
+const uint32_t SERVO_MOVE_MS  = 450;   // หมุนนานเท่านี้แล้วหยุด ปรับจนป้ายยกได้มุมที่ต้องการ
+const int      SERVO_UP_DIR   = -1;    // ทิศตอนยกป้าย (หันหน้าเข้าด้านที่มีธง) 1 = ธงพักด้านขวา -1 = ธงพักด้านซ้าย
 const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 วินาที
 const uint32_t SENSE_EVERY_MS = 5000;   // อ่าน DHT11 / เสียง ทุก 5 วินาที
 const uint32_t RETRY_AGE_MS = 200;
@@ -98,6 +110,7 @@ uint32_t scaledMinToMs(float m) { return (uint32_t)(m * 60000.0f / DEMO_SPEED); 
 
 // ---------------- servo ----------------
 void servoWrite(int deg) {
+  if (SERVO_MODE != 1) { ledcWrite(SERVO_PIN, 0); return; }
   uint32_t us = map(constrain(deg, 0, 180), 0, 180, 500, 2400);
   ledcWrite(SERVO_PIN, us * 65535UL / 20000UL);
 }
@@ -113,6 +126,41 @@ void setSignLocked(bool up, const char *why) {
   Serial.printf("[SIGN] %s (%s)\n", up ? "UP" : "DOWN", why);
 }
 
+#if SERVO_MODE == 2
+// รุ่น 360°: ป้ายเปลี่ยนสถานะ → หมุนไปทางนั้น SERVO_MOVE_MS แล้วตัดพัลส์ให้หยุด
+// ตอนเปิดเครื่องถือว่าป้ายลงอยู่ ถ้าไม่ใช่ ให้หมุนป้ายลงด้วยมือก่อนเปิด
+void servoTask(void *) {
+  int target = SIGN_DOWN_DEG;
+  int current = SIGN_DOWN_DEG;   // ตำแหน่งที่ป้ายอยู่ตอนนี้
+  int movingTo = SIGN_DOWN_DEG;
+  bool moving = false;
+  uint32_t moveStartMs = 0;
+  bool stopped = false;
+  ledcWrite(SERVO_PIN, 0);
+  for (;;) {
+    int deg;
+    if (xQueueReceive(servoQueue, &deg, pdMS_TO_TICKS(20)) == pdTRUE) target = deg;
+    if (estop) {
+      if (!stopped) { ledcWrite(SERVO_PIN, 0); stopped = true; moving = false; Serial.println("[ESTOP] หยุดเซอร์โวแล้ว (พิมพ์ c เพื่อปลด)"); }
+      continue;
+    }
+    if (stopped) stopped = false;
+    if (!moving && target != current) {
+      int dir = (target == SIGN_UP_DEG) ? SERVO_UP_DIR : -SERVO_UP_DIR;
+      uint32_t us = SERVO_STOP_US + dir * SERVO_SPEED_US;
+      ledcWrite(SERVO_PIN, us * 65535UL / 20000UL);
+      movingTo = target;
+      moveStartMs = millis();
+      moving = true;
+    }
+    if (moving && millis() - moveStartMs >= SERVO_MOVE_MS) {
+      ledcWrite(SERVO_PIN, 0);
+      current = movingTo;
+      moving = false;
+    }
+  }
+}
+#else
 void servoTask(void *) {
   int target = SIGN_DOWN_DEG;
   bool stopped = false;
@@ -128,6 +176,7 @@ void servoTask(void *) {
     servoWrite(target);
   }
 }
+#endif
 
 // ---------------- ESP-NOW ----------------
 void onRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
