@@ -487,7 +487,9 @@ void setup() {
   stateMutex  = xSemaphoreCreateMutex();
 
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);   // ปิดโหมดประหยัดไฟ Wi-Fi ไม่งั้นวิทยุหลับเป็นช่วง ๆ แล้วพลาดแพ็กเก็ต ESP-NOW จาก node (macFail)
   WiFi.setAutoReconnect(true);
+  Serial.printf("Gateway MAC = %s  <- ต้องตรงกับ GATEWAY_MAC ใน node.ino\n", WiFi.macAddress().c_str());
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("WiFi connecting");
   // รอ Wi-Fi สูงสุด 20 วิ ไม่ได้ก็ทำงานต่อ (ข้อมูลเก็บลง flash ไว้ก่อน)
