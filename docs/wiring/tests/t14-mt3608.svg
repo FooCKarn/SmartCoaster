@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1526" viewBox="0 0 1700 1526" font-family="'Noto Sans Thai','Sarabun','Leelawadee UI','Tahoma',sans-serif"><rect width="100%" height="100%" fill="#ffffff"/><text x="40" y="46" font-size="26" text-anchor="start" font-weight="700" fill="#1b2a41">t14: MT3608 boost 5 V จากแบต 18650 (บอร์ด Node)</text>
+<text x="40" y="72" font-size="14" text-anchor="start" font-weight="400" fill="#555">tests/t14_mt3608  (ESP32 ใช้ไฟ USB · อ่าน VIN ที่ GPIO34 และ VOUT ที่ GPIO33 ผ่านตัวแบ่ง 100k/100k)</text>
+<rect x="760" y="120" width="300" height="804" rx="10" fill="#20303f" stroke="#0d1620" stroke-width="2"/>
+<rect x="820" y="130" width="180" height="30" rx="3" fill="#38506a" stroke="#5a7896" stroke-width="1"/>
+<text x="910.0" y="151" font-size="11" text-anchor="middle" font-weight="600" fill="#c9d6e3">ANTENNA (ด้านบน)</text>
+<text x="910.0" y="184" font-size="16" text-anchor="middle" font-weight="700" fill="#ffffff">NODE</text>
+<text x="910.0" y="204" font-size="12" text-anchor="middle" font-weight="400" fill="#c9d6e3">ESP32 DevKit V1 (DOIT 30 ขา)</text>
+<rect x="876.0" y="898" width="68" height="26" rx="3" fill="#9aa5b1" stroke="#555" stroke-width="1"/>
+<text x="910.0" y="916" font-size="12" text-anchor="middle" font-weight="700" fill="#222">USB</text>
+<polyline points="738,220 760,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="225" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">EN</text>
+<polyline points="738,266 760,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="271" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VP (GPIO36)</text>
+<polyline points="738,312 760,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="317" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VN (GPIO39)</text>
+<polyline points="738,358 760,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="363" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">D34  ·  GPIO34</text>
+<polyline points="738,404 760,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="409" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D35  ·  GPIO35</text>
+<polyline points="738,450 760,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="455" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D32  ·  GPIO32</text>
+<polyline points="738,496 760,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="501" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">D33  ·  GPIO33</text>
+<polyline points="738,542 760,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="547" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D25  ·  GPIO25</text>
+<polyline points="738,588 760,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="593" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D26  ·  GPIO26</text>
+<polyline points="738,634 760,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="639" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D27  ·  GPIO27</text>
+<polyline points="738,680 760,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="685" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D14  ·  GPIO14</text>
+<polyline points="738,726 760,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="731" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D12  ·  GPIO12</text>
+<polyline points="738,772 760,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="777" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">D13  ·  GPIO13</text>
+<polyline points="738,818 760,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="823" font-size="13" text-anchor="start" font-weight="700" fill="#ffd166">GND</text>
+<polyline points="738,864 760,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="770" y="869" font-size="13" text-anchor="start" font-weight="400" fill="#7f8c99">VIN</text>
+<polyline points="1060,220 1082,220" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="225" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D23  ·  GPIO23</text>
+<polyline points="1060,266 1082,266" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="271" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D22  ·  GPIO22</text>
+<polyline points="1060,312 1082,312" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="317" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX0 (GPIO1)</text>
+<polyline points="1060,358 1082,358" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="363" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX0 (GPIO3)</text>
+<polyline points="1060,404 1082,404" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="409" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D21  ·  GPIO21</text>
+<polyline points="1060,450 1082,450" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="455" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D19  ·  GPIO19</text>
+<polyline points="1060,496 1082,496" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="501" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D18  ·  GPIO18</text>
+<polyline points="1060,542 1082,542" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="547" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D5  ·  GPIO5</text>
+<polyline points="1060,588 1082,588" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="593" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">TX2 (GPIO17)</text>
+<polyline points="1060,634 1082,634" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="639" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">RX2 (GPIO16)</text>
+<polyline points="1060,680 1082,680" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="685" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D4  ·  GPIO4</text>
+<polyline points="1060,726 1082,726" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="731" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D2  ·  GPIO2</text>
+<polyline points="1060,772 1082,772" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="777" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">D15  ·  GPIO15</text>
+<polyline points="1060,818 1082,818" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="823" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">GND</text>
+<polyline points="1060,864 1082,864" fill="none" stroke="#c9a227" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1050" y="869" font-size="13" text-anchor="end" font-weight="400" fill="#7f8c99">3V3</text>
+<text x="910.0" y="946" font-size="13" text-anchor="middle" font-weight="700" fill="#1b2a41">เสียบ USB เข้าคอมพิวเตอร์ (จ่ายไฟ + Serial 115200)</text>
+<rect x="40" y="500" width="150" height="150" rx="8" fill="#fdeeee" stroke="#b85450" stroke-width="2"/>
+<text x="115.0" y="522" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">แบต 18650</text>
+<text x="115.0" y="540" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">3.0–4.2 V</text>
+<rect x="185" y="560" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="180" y="570" font-size="13" text-anchor="end" font-weight="600" fill="#333">+</text>
+<rect x="185" y="606" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="180" y="616" font-size="13" text-anchor="end" font-weight="600" fill="#333">−</text>
+<rect x="300" y="470" width="240" height="200" rx="8" fill="#fff2e0" stroke="#d98200" stroke-width="2"/>
+<text x="420.0" y="492" font-size="15" text-anchor="middle" font-weight="700" fill="#1b2a41">MT3608 boost</text>
+<text x="420.0" y="510" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">ปรับ trimmer เป็น 5.0 V</text>
+<text x="420.0" y="526" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">ก่อนต่อสายเข้า D33 !</text>
+<text x="420.0" y="542" font-size="12" text-anchor="middle" font-weight="400" fill="#4b5563">(ค่าเดิมจากโรงงานอาจสูงมาก)</text>
+<rect x="295" y="560" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="310" y="570" font-size="13" text-anchor="start" font-weight="600" fill="#333">VIN+</text>
+<rect x="295" y="606" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="310" y="616" font-size="13" text-anchor="start" font-weight="600" fill="#333">VIN−</text>
+<rect x="535" y="560" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="530" y="570" font-size="13" text-anchor="end" font-weight="600" fill="#333">VOUT+</text>
+<rect x="535" y="606" width="10" height="10" fill="#c9a227" stroke="#6b5600" stroke-width="1"/>
+<text x="530" y="616" font-size="13" text-anchor="end" font-weight="600" fill="#333">VOUT−</text>
+<polyline points="190,565 300,565" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="190,611 300,611" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="245" cy="565" r="5" fill="#8c564b"/>
+<polyline points="245,565 245,551" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="218.0" y="525" width="54" height="26" rx="5" fill="#8c564b" stroke="#8c564b" stroke-width="1"/>
+<text x="245" y="543" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">VBAT</text>
+<circle cx="245" cy="611" r="5" fill="#222222"/>
+<polyline points="245,611 245,627" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="232,627 258,627" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="237,632 253,632" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="242,637 248,637" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="540,565 580,565" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="580" cy="565" r="5" fill="#d62728"/>
+<polyline points="580,565 580,551" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="557.0" y="525" width="46" height="26" rx="5" fill="#d62728" stroke="#d62728" stroke-width="1"/>
+<text x="580" y="543" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">+5V</text>
+<polyline points="540,611 580,611" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="580,611 580,627" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="567,627 593,627" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="572,632 588,632" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="577,637 583,637" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="420.0" y="700" font-size="12" text-anchor="middle" font-weight="700" fill="#7a2e00">วัด VOUT+ เทียบ VOUT− ด้วยมัลติมิเตอร์</text>
+<polyline points="738,358 600,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="600" cy="358" r="5" fill="#8c564b"/>
+<polyline points="600,248 600,283.0" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="600,323.0 600,358" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="591" y="283.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="585" y="308.0" font-size="13" text-anchor="end" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="600,248 600,234" fill="none" stroke="#8c564b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="573.0" y="208" width="54" height="26" rx="5" fill="#8c564b" stroke="#8c564b" stroke-width="1"/>
+<text x="600" y="226" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">VBAT</text>
+<polyline points="600,358 600,393.0" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="600,433.0 600,468" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="591" y="393.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="615" y="418.0" font-size="13" text-anchor="start" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="600,468 600,484" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="587,484 613,484" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="592,489 608,489" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="597,494 603,494" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="600" y="200" font-size="12" text-anchor="middle" font-weight="700" fill="#8c564b">VIN → D34</text>
+<polyline points="738,496 685,496" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="685" cy="496" r="5" fill="#d62728"/>
+<polyline points="685,426 685,441.0" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="685,481.0 685,496" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="676" y="441.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="670" y="466.0" font-size="13" text-anchor="end" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="685,426 685,412" fill="none" stroke="#d62728" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="662.0" y="386" width="46" height="26" rx="5" fill="#d62728" stroke="#d62728" stroke-width="1"/>
+<text x="685" y="404" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">+5V</text>
+<polyline points="685,496 685,531.0" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="685,571.0 685,606" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="676" y="531.0" width="18" height="40" rx="3" fill="#f4e7c5" stroke="#444" stroke-width="1.6"/>
+<text x="700" y="556.0" font-size="13" text-anchor="start" font-weight="700" fill="#333">100kΩ</text>
+<polyline points="685,606 685,622" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="672,622 698,622" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="677,627 693,627" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="682,632 688,632" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="715" y="661" font-size="12" text-anchor="end" font-weight="700" fill="#d62728">VOUT → D33 (≈2.5 V ที่ขา)</text>
+<polyline points="738,818 708,818" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="708,818 708,834" fill="none" stroke="#222222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="695,834 721,834" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="700,839 716,839" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="705,844 711,844" fill="none" stroke="#222222" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="40" y="994" width="1620" height="502" rx="8" fill="#fff8e6" stroke="#d9a400" stroke-width="1.5"/>
+<text x="56" y="1020" font-size="15" text-anchor="start" font-weight="700" fill="#5c4400">เช็กลิสต์ทดสอบ</text>
+<text x="56" y="1044" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ต่อสาย</text>
+<text x="56" y="1065" font-size="13" text-anchor="start" font-weight="400" fill="#333">   1) แบต 18650 + → MT3608 VIN+ · แบต − → MT3608 VIN−</text>
+<text x="56" y="1086" font-size="13" text-anchor="start" font-weight="400" fill="#333">   2) ยังไม่ต่อสายเข้า D33: ตั้ง trimmer จนมัลติมิเตอร์ที่ VOUT+ ได้ 5.0 V</text>
+<text x="56" y="1107" font-size="13" text-anchor="start" font-weight="400" fill="#333">   3) VIN+ (VBAT) → ตัวต้านทาน 100kΩ ตัวบน → จุดกลาง → D34 · จุดกลาง → 100kΩ ตัวล่าง → GND</text>
+<text x="56" y="1128" font-size="13" text-anchor="start" font-weight="400" fill="#333">   4) VOUT+ (+5V) → ตัวต้านทาน 100kΩ ตัวบน → จุดกลาง → D33 · จุดกลาง → 100kΩ ตัวล่าง → GND</text>
+<text x="56" y="1149" font-size="13" text-anchor="start" font-weight="400" fill="#333">   5) แบต − กับ MT3608 VIN−/VOUT− กับ GND ของ ESP32 ต่อถึงกันทั้งหมด (สัญลักษณ์กราวด์ทุกอันคือจุดเดียวกัน)</text>
+<text x="56" y="1170" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ขั้นตอนทดสอบ</text>
+<text x="56" y="1191" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 1: ยังไม่เสียบ USB และยังไม่ต่อ D33 ต่อแบตเข้า MT3608 วัด VOUT ด้วยมัลติมิเตอร์ ปรับ trimmer ให้ได้ 5.0 V (ยอมรับ 4.9–5.1 V)</text>
+<text x="56" y="1212" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 2: ต่อสายตัวแบ่งเข้า D33 และ D34 เสียบ USB เปิด Serial Monitor 115200</text>
+<text x="56" y="1233" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • t14 MT3608 boost (VIN = GPIO34, VOUT = GPIO33) แล้วตามด้วยบรรทัดแบบนี้ทุก 0.5 วินาที</text>
+<text x="56" y="1254" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • VIN = 3.85 V  VOUT = 5.012 V  สวิง = 24 mV  [ok]</text>
+<text x="56" y="1275" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • VOUT ต้องต่างจากมัลติมิเตอร์ไม่เกิน 0.1 V ถ้าต่างคงที่ ให้ตั้ง VOUT_GAIN = ค่ามัลติมิเตอร์ ÷ ค่าที่อ่านได้</text>
+<text x="56" y="1296" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 3 (ทดสอบโหลด): ส่ง b จำค่าไม่มีโหลด แล้วต่อ R 100Ω คร่อม +5V กับ GND (≈50 mA) · ตกจาก baseline ต้องไม่เกิน 0.1 V</text>
+<text x="56" y="1317" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ขั้น 4: เปลี่ยนแบตเป็นก้อนที่แรงดันต่ำลง (3.3–4.2 V) · VOUT ต้องยังได้ 5.0 V ± 0.1 V</text>
+<text x="56" y="1338" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ผ่าน = VOUT 4.9–5.1 V ตลอดช่วงแบต 3.3–4.2 V และตกเมื่อมีโหลดไม่เกิน 0.1 V</text>
+<text x="56" y="1359" font-size="13" text-anchor="start" font-weight="400" fill="#333">▸ ข้อควรระวัง</text>
+<text x="56" y="1380" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ห้ามต่อสายตัวแบ่ง D33 ก่อนปรับ trimmer: MT3608 ที่ยังไม่ปรับอาจออกสูงถึง ~28 V ขา ESP32 พังทันที</text>
+<text x="56" y="1401" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ตัวแบ่ง ÷2 ทำให้ขา D33 ปลอดภัยถึง VOUT ≈ 6.6 V · ถ้าอ่านได้เกิน 6 V โค้ดจะเตือนว่า &#x27;อันตราย&#x27; ให้ถอดสายทันที</text>
+<text x="56" y="1422" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ห้ามต่อ VOUT เข้า 3V3 หรือ VIN ของ ESP32 · +5 V ใช้กับ HC-SR04 VCC เท่านั้น</text>
+<text x="56" y="1443" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • สวิง (mV) เป็นค่าหยาบจาก ADC อ่านริปเปิลความถี่สวิตช์ไม่ได้ ถ้าต้องการวัดจริงใช้ออสซิลโลสโคป</text>
+<text x="56" y="1464" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • VOUT ไม่สูงกว่า VIN = บูสต์ไม่ทำงาน หรือ trimmer ถูกหมุนต่ำสุด · ใส่แบตกลับขั้ว MT3608 พังได้ เช็คขั้วก่อนต่อ</text>
+<text x="56" y="1485" font-size="13" text-anchor="start" font-weight="400" fill="#333">   • ถ้า VOUT ตกมากตอนมีโหลด: ใช้สายสั้นและหนา · ตรวจว่าแบตไม่ใกล้หมด · เพิ่ม C 100µF ที่ VOUT</text></svg>
