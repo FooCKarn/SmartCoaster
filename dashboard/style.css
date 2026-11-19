@@ -722,3 +722,147 @@ a:focus-visible, button:focus-visible {
 .login-card button { padding: 8px 14px; border: 0; border-radius: 10px; background: var(--aqua); color: #fff; font: inherit; cursor: pointer; }
 .login-note { color: var(--muted); font-size: 0.9em; }
 #who a { color: var(--aqua-deep); margin-left: 6px; }
+
+
+/* ================= RESPONSIVE ENHANCEMENTS (SENSORS & GLOBAL) ================= */
+.room-chart-wrap {
+  position: relative;
+  height: 230px;
+  width: 100%;
+  min-width: 0;
+}
+
+.bottom-grid > .card {
+  min-width: 0;
+}
+
+/* Tablet & medium screens (<= 1120px) */
+@media (max-width: 1120px) {
+  .sensor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sensor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Small tablet / landscape phone (<= 768px) */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 12px 16px;
+    gap: 10px 14px;
+  }
+
+  .controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .container {
+    padding: 16px 14px 32px;
+  }
+
+  .card {
+    padding: 20px 18px;
+    border-radius: 16px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .chart-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sensor-chart-wrap {
+    min-height: 250px;
+  }
+
+  .sensor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .room-chart-wrap {
+    height: 210px;
+  }
+}
+
+/* Mobile portrait (<= 520px) */
+@media (max-width: 520px) {
+  .brand-sub {
+    display: none;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .node-pill {
+    justify-content: space-between;
+  }
+
+  .nav-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--gray-soft);
+    padding: 3px;
+    border-radius: 12px;
+  }
+
+  .nav-btn {
+    text-align: center;
+    padding: 7px 10px;
+    font-size: 0.85rem;
+  }
+
+  .nav-btn.active {
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(15, 42, 53, 0.08);
+  }
+
+  .telemetry-bar {
+    font-size: 0.78rem;
+    gap: 4px 10px;
+  }
+
+  .sensor-chart-wrap {
+    min-height: 220px;
+  }
+
+  .sensor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-card {
+    min-height: auto;
+    padding: 14px 16px;
+  }
+
+  .mini-card b {
+    font-size: 1.4rem;
+  }
+
+  .spec-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 10px 0;
+  }
+
+  .spec-val {
+    text-align: left;
+  }
+
+  .room-chart-wrap {
+    height: 190px;
+  }
+}
