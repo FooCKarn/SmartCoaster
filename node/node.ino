@@ -4,6 +4,8 @@
 #include <esp_wifi.h>
 #include <HX711.h>
 #include <Preferences.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #include "msg.h"
 
 // ===== แก้ 3 ค่านี้ =====
@@ -32,16 +34,43 @@ const uint32_t SEND_EVERY_MS = 5000;
 // ===== ดีบักตอนใช้แบต (ไม่มี Serial ให้ดู) =====
 // LED บนบอร์ด (GPIO2 สีน้ำเงิน) บอกสถานะ:
 //   เปิดเครื่อง        = กะพริบเร็ว 3 ครั้ง  (ถ้าเห็น 3 ครั้งซ้ำทุกไม่กี่วินาที = บอร์ดรีเซ็ตวน = ไฟตก)
+//   เปิดวิทยุผ่าน       = กะพริบช้า 2 ครั้ง
 //   ส่งแล้ว gateway ตอบ = กะพริบสั้น 1 ครั้งทุก 5 วิ
 //   ส่งไม่ถึง/ไม่มี ACK  = ติดค้าง 1 วิ ทุก 5 วิ
 // สถิติจดลง flash (NVS) แล้วเสียบ USB เปิด Serial Monitor ดูทีหลังได้ (พิมพ์ตอนบูต)
 const int      STATUS_LED   = 2;
 const uint32_t SAVE_EVERY_MS = 30000;
 // ลดกำลังส่ง = ลดกระแสพุ่งตอนส่ง ช่วยให้ LDO จ่ายทัน วางบนโต๊ะห่าง gateway ไม่กี่เมตรพอ
-// หน่วย 0.25 dBm: 44 = 11 dBm (ค่าเดิมของ ESP32 = 80 = 20 dBm)  ใส่ 0 = ไม่ลด
-const int8_t   TX_POWER_QDBM = 44;
+// หน่วย 0.25 dBm: 34 = 8.5 dBm (ค่าเดิมของ ESP32 = 80 = 20 dBm)  ใส่ 0 = ไม่ลด
+const int8_t   TX_POWER_QDBM = 34;
+
+// ===== ลดไฟตก (brownout) ตอนใช้แบต =====
+// CPU 80 MHz ยังใช้ WiFi/ESP-NOW ได้ กินไฟน้อยกว่า 240 MHz ราว 20-30 mA
+const uint32_t CPU_MHZ = 80;
+// รอให้ตัวเก็บประจุ/MT3608 นิ่งก่อนเปิดวิทยุ (ตอนเปิด WiFi กระแสพุ่งสูงสุด)
+// ถ้ารอบก่อนรีเซ็ตเพราะไฟตก จะรอนานขึ้นเป็น RADIO_DELAY_AFTER_BROWNOUT_MS
+const uint32_t RADIO_DELAY_MS = 500;
+const uint32_t RADIO_DELAY_AFTER_BROWNOUT_MS = 3000;
+// 1 = ปิดตัวตรวจไฟตก (ทางเลือกสุดท้าย ใช้ตอนเดโมถ้ายังรีเซ็ตวน)
+//     ข้อเสีย: ถ้าไฟตกจริง บอร์ดอาจค้างหรือทำงานเพี้ยนแทนที่จะรีเซ็ต และค่าที่จดลง flash อาจเสีย
+#ifndef DISABLE_BROWNOUT
+#define DISABLE_BROWNOUT 0
+#endif
 Preferences dbg;
 uint32_t noAckRounds = 0;
+bool lastResetBrownout = false;
+
+// จดว่าบูตไปถึงขั้นไหนแล้ว ถ้ารีเซ็ตกลางทาง จะรู้ว่าตายตอนไหน
+// 1 = กำลังเปิด WiFi  2 = เปิด ESP-NOW ได้แล้ว  3 = ส่งรอบแรกเสร็จ
+void markStage(uint8_t st) { dbg.putUChar("stage", st); }
+const char *stageText(uint8_t st) {
+  switch (st) {
+    case 1: return "1 = ตายตอนเปิด WiFi (กระแสพุ่งตอนเริ่มวิทยุ)";
+    case 2: return "2 = เปิด ESP-NOW ได้ แต่ตายก่อนส่งรอบแรกเสร็จ";
+    case 3: return "3 = ส่งได้อย่างน้อย 1 รอบ";
+    default: return "0 = ตายก่อนถึงขั้นเปิด WiFi";
+  }
+}
 
 // ===== E4: ACK + คิวส่งซ้ำ =====
 // ทุกค่าที่วัดเข้าคิวก่อน แล้วส่งจากหัวคิว (เก่าสุดก่อน) รอ AckMsg จาก gateway
@@ -172,6 +201,7 @@ void debugBoot() {
   Serial.println();
   Serial.println("===== node debug (สถิติจาก flash) =====");
   Serial.printf("รีเซ็ตครั้งนี้เพราะ: %s\n", resetText(reason));
+  Serial.printf("รอบก่อนไปถึงขั้น: %s\n", stageText(dbg.getUChar("stage", 0)));
   Serial.printf("รอบก่อน: รันได้ %lu s, acked=%lu, ส่งไม่ถึง=%lu รอบ\n",
                 (unsigned long)dbg.getUInt("upS", 0), (unsigned long)dbg.getUInt("acked", 0),
                 (unsigned long)dbg.getUInt("noAck", 0));
@@ -184,6 +214,8 @@ void debugBoot() {
   dbg.putUInt("upS", 0);
   dbg.putUInt("acked", 0);
   dbg.putUInt("noAck", 0);
+  dbg.putUChar("stage", 0);
+  lastResetBrownout = (reason == ESP_RST_BROWNOUT);
 }
 
 void debugSave() {
@@ -196,6 +228,10 @@ void debugSave() {
 }
 
 void setup() {
+#if DISABLE_BROWNOUT
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);   // ปิดตัวตรวจไฟตก (ดูคำเตือนด้านบน)
+#endif
+  setCpuFrequencyMhz(CPU_MHZ);
   Serial.begin(115200);
   pinMode(STATUS_LED, OUTPUT);
   delay(300);
@@ -215,7 +251,13 @@ void setup() {
   else Serial.println("HX711 not responding (เช็คสาย DT/SCK/VCC) -> weight = NaN");
 #endif
 
+  uint32_t radioDelay = lastResetBrownout ? RADIO_DELAY_AFTER_BROWNOUT_MS : RADIO_DELAY_MS;
+  Serial.printf("CPU %lu MHz, รอ %lu ms ก่อนเปิดวิทยุ%s\n", (unsigned long)getCpuFrequencyMhz(),
+                (unsigned long)radioDelay, DISABLE_BROWNOUT ? " (ปิดตัวตรวจไฟตก)" : "");
+  delay(radioDelay);
+  markStage(1);
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   esp_wifi_set_channel(WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
   if (TX_POWER_QDBM > 0) esp_wifi_set_max_tx_power(TX_POWER_QDBM);
   if (esp_now_init() != ESP_OK) {
@@ -231,6 +273,8 @@ void setup() {
   peer.encrypt = false;
   if (esp_now_add_peer(&peer) != ESP_OK) Serial.println("add peer FAILED");
   bootId = (uint16_t)esp_random();
+  markStage(2);
+  blink(2, 300, 200);                         // กะพริบช้า 2 ครั้ง = เปิดวิทยุผ่านแล้ว
   Serial.printf("Node %d ready on channel %d (boot_id=%u)\n", NODE_ID, WIFI_CHANNEL, bootId);
 }
 
@@ -298,6 +342,7 @@ void loop() {
   enqueue(msg);
   uint32_t ackedBefore = ackedCount;
   flushQueue();
+  if (seq == 1) markStage(3);
   if (ackedCount > ackedBefore) {
     blink(1, 40, 0);                        // gateway ตอบแล้ว
   } else {
