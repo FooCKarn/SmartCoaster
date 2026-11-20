@@ -44,6 +44,12 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include "../tests/t12_tls/t12_tls.ino"
+#elif defined(SC_SKETCH_T15_POWER_CHECK)
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
+#include <Preferences.h>
+#include "../tests/t15_power_check/t15_power_check.ino"
 #else
 #error "Select a sketch using a PlatformIO environment in platformio.ini"
 #endif
