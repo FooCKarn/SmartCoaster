@@ -30,6 +30,10 @@
   --gray: #94a7b0;
   --gray-soft: #eef2f4;
 
+  --gw: #5b63c7;
+  --gw-soft: #ecedfa;
+  --gw-ink: #3f46a0;
+
   --radius: 20px;
 }
 
@@ -469,13 +473,50 @@ a:focus-visible, button:focus-visible {
 }
 
 /* ================= PAGE 2: SENSORS & TIME RANGE CONTROLS ================= */
-.sensor-layout {
+/* Board sections: NODE (coaster pad) and GATEWAY (sign box) */
+.board-section { --board: var(--gray); }
+.board-section + .board-section { margin-top: 28px; }
+.board-node { --board: var(--aqua); --board-soft: var(--aqua-soft); --board-ink: var(--aqua-deep); }
+.board-gateway { --board: var(--gw); --board-soft: var(--gw-soft); --board-ink: var(--gw-ink); }
+
+.board-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+  padding: 2px 0 2px 12px;
+  border-left: 4px solid var(--board);
+}
+.board-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 11px;
+  border-radius: 99px;
+  background: var(--board-soft);
+  color: var(--board-ink);
+}
+.board-title { margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--ink); }
+.board-sub { font-size: 0.82rem; color: var(--muted); }
+
+/* colored strip on top of every card so each card visibly belongs to its board */
+.board-section .card,
+.board-section .mini-card { box-shadow: inset 0 3px 0 var(--board); }
+
+.title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.node-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 1.35fr) minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 290px);
+  gap: 16px;
   align-items: stretch;
 }
-@media (max-width: 1120px) { .sensor-layout { grid-template-columns: 1fr; } }
+.node-grid > .mini-card { min-height: 0; }
+.node-grid > .mini-card b { font-size: 2.3rem; }
+@media (max-width: 1120px) { .node-grid { grid-template-columns: 1fr; } }
+
+.board-section > .sensor-grid + .card { margin-top: 12px; }
 
 .sensor-chart-card {
   display: flex;
@@ -516,13 +557,11 @@ a:focus-visible, button:focus-visible {
 
 .sensor-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-rows: 1fr;
   gap: 12px;
   min-width: 0;
 }
-@media (max-width: 540px) { .sensor-grid { grid-template-columns: 1fr; } }
-.sensor-grid > .mini-card:last-child { grid-column: 1 / -1; }
 
 .mini-card {
   background: var(--surface);
@@ -577,7 +616,7 @@ a:focus-visible, button:focus-visible {
   border-radius: 99px;
 }
 .node-tag { background: var(--aqua-soft); color: var(--aqua-deep); }
-.gw-tag   { background: var(--gray-soft); color: var(--text); }
+.gw-tag   { background: var(--gw-soft); color: var(--gw-ink); }
 
 .sensor-badge {
   display: inline-flex;
@@ -627,7 +666,7 @@ a:focus-visible, button:focus-visible {
 }
 .spec-row:first-child { border-top: 0; padding-top: 0; }
 .spec-row:last-child { padding-bottom: 0; }
-.spec-key { font-weight: 600; color: var(--ink); }
+.spec-key { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-weight: 600; color: var(--ink); }
 .spec-val { font-size: 0.8rem; color: var(--aqua-deep); text-align: right; }
 
 /* ================= FOOTER ================= */
@@ -729,17 +768,13 @@ a:focus-visible, button:focus-visible {
 
 /* Tablet & medium screens (<= 1120px) */
 @media (max-width: 1120px) {
-  .sensor-layout {
-    grid-template-columns: 1fr;
-  }
-
+  /* 5 cards: top row 3 cards, bottom row 2 wider cards */
   .sensor-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  .sensor-grid > .mini-card:last-child {
-    grid-column: span 2;
-  }
+  .sensor-grid > .mini-card { grid-column: span 2; }
+  .sensor-grid > .mini-card:nth-child(n+4) { grid-column: span 3; }
 }
 
 /* Small tablet / landscape phone (<= 768px) */
@@ -784,9 +819,9 @@ a:focus-visible, button:focus-visible {
     gap: 10px;
   }
 
-  .sensor-grid > .mini-card:last-child {
-    grid-column: 1 / -1;
-  }
+  .sensor-grid > .mini-card,
+  .sensor-grid > .mini-card:nth-child(n+4) { grid-column: auto; }
+  .sensor-grid > .mini-card:last-child { grid-column: 1 / -1; }
 
   .room-chart-wrap {
     height: 210px;
@@ -840,6 +875,10 @@ a:focus-visible, button:focus-visible {
   .sensor-grid {
     grid-template-columns: 1fr;
   }
+
+  .sensor-grid > .mini-card:last-child { grid-column: auto; }
+
+  .board-sub { flex-basis: 100%; }
 
   .mini-card {
     min-height: auto;

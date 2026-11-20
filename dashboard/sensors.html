@@ -66,36 +66,40 @@
     <button type="submit">Sign in</button>
   </form>
 
-  <!-- Top Section: Load Cell Real-time Chart + 5 Sensor Cards -->
-  <section class="sensor-layout">
-    <div class="card sensor-chart-card">
-      <div class="card-header">
-        <div>
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
-            <span class="node-tag">NODE</span>
-            <span class="sensor-badge is-offline" id="st-hx711"><i class="status-dot"></i><span>Offline</span></span>
+  <!-- NODE board: coaster pad (HX711 load cell + HC-SR04) -->
+  <section class="board-section board-node" aria-labelledby="nodeTitle">
+    <header class="board-head">
+      <span class="board-pill">NODE</span>
+      <h2 class="board-title" id="nodeTitle">Coaster pad</h2>
+      <span class="board-sub">ESP32 node under the cup · HX711 load cell + HC-SR04 ultrasonic</span>
+    </header>
+    <div class="node-grid">
+      <div class="card sensor-chart-card">
+        <div class="card-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
+              <span class="node-tag">NODE</span>
+              <span class="sensor-badge is-offline" id="st-hx711"><i class="status-dot"></i><span>Offline</span></span>
+            </div>
+            <p class="card-desc">Today (00:00 – now) · Point at the chart and scroll the mouse wheel, drag it, or use the bar below</p>
           </div>
-          <p class="card-desc">Today (00:00 – now) · Drag the chart or use the bar below to scroll through time</p>
-        </div>
 
-        <div class="chart-controls">
-          <span class="weight-badge mono" id="w">– g</span>
+          <div class="chart-controls">
+            <span class="weight-badge mono" id="w">– g</span>
+          </div>
+        </div>
+        <div class="chart-wrap sensor-chart-wrap">
+          <canvas id="chartW"></canvas>
+        </div>
+        <div class="chart-scroll">
+          <div class="chart-scroll-track" id="weightScrollTrack" role="scrollbar" aria-orientation="horizontal" aria-controls="chartW" aria-label="Scroll weight chart through time" tabindex="0">
+            <div class="chart-scroll-thumb" id="weightScrollThumb"></div>
+          </div>
+          <span class="chart-scroll-range mono" id="weightScrollRange">–</span>
         </div>
       </div>
-      <div class="chart-wrap sensor-chart-wrap">
-        <canvas id="chartW"></canvas>
-      </div>
-      <div class="chart-scroll">
-        <div class="chart-scroll-track" id="weightScrollTrack" role="scrollbar" aria-orientation="horizontal" aria-controls="chartW" aria-label="Scroll weight chart through time" tabindex="0">
-          <div class="chart-scroll-thumb" id="weightScrollThumb"></div>
-        </div>
-        <span class="chart-scroll-range mono" id="weightScrollRange">–</span>
-      </div>
-    </div>
 
-    <div class="sensor-grid">
-      <!-- 1. Distance -->
       <div class="mini-card accent-red" id="card-hcsr04">
         <div class="mini-top">
           <small>ULTRASONIC · HC-SR04</small>
@@ -109,8 +113,17 @@
         </div>
         <span class="mini-foot" id="dDesc">–</span>
       </div>
+    </div>
+  </section>
 
-      <!-- 2. Temperature -->
+  <!-- GATEWAY board: sign box (DHT11, KY-038, PIR, ESP-NOW receiver) -->
+  <section class="board-section board-gateway" aria-labelledby="gatewayTitle">
+    <header class="board-head">
+      <span class="board-pill">GATEWAY</span>
+      <h2 class="board-title" id="gatewayTitle">Sign box</h2>
+      <span class="board-sub">ESP32 gateway · DHT11 + KY-038 sound + PIR + ESP-NOW receiver</span>
+    </header>
+    <div class="sensor-grid">
       <div class="mini-card accent-yellow" id="card-temp">
         <div class="mini-top">
           <small>TEMPERATURE · DHT11</small>
@@ -125,7 +138,6 @@
         <span class="mini-foot">Used to estimate hydration needs</span>
       </div>
 
-      <!-- 3. Humidity -->
       <div class="mini-card accent-blue" id="card-rh">
         <div class="mini-top">
           <small>HUMIDITY · DHT11</small>
@@ -141,7 +153,6 @@
         <span class="mini-foot">Relative humidity in the room</span>
       </div>
 
-      <!-- 4. Sound -->
       <div class="mini-card accent-yellow" id="card-sound">
         <div class="mini-top">
           <small>SOUND LEVEL · KY-038</small>
@@ -158,30 +169,43 @@
         <span class="mini-foot" id="sndState">–</span>
       </div>
 
-      <!-- 5. Signal & PIR ISR -->
-      <div class="mini-card accent-blue" id="card-link">
+      <div class="mini-card accent-blue" id="card-rssi">
         <div class="mini-top">
-          <small>ESP-NOW RSSI &amp; PIR · E2</small>
+          <small>ESP-NOW RSSI</small>
           <div class="tag-group">
             <span class="gw-tag">GATEWAY</span>
-            <span class="sensor-badge is-offline" id="st-link"><i class="status-dot"></i><span>Offline</span></span>
+            <span class="sensor-badge is-offline" id="st-rssi"><i class="status-dot"></i><span>Offline</span></span>
           </div>
         </div>
         <div class="mini-body">
           <b class="mono" id="rssi">– dBm</b>
         </div>
-        <span class="mini-foot mono" id="pirCount">PIR ISR Interrupts: –</span>
+        <span class="mini-foot">Signal strength between node and gateway</span>
+      </div>
+
+      <div class="mini-card accent-blue" id="card-pir">
+        <div class="mini-top">
+          <small>PIR MOTION · E2</small>
+          <div class="tag-group">
+            <span class="gw-tag">GATEWAY</span>
+            <span class="sensor-badge is-offline" id="st-pir"><i class="status-dot"></i><span>Offline</span></span>
+          </div>
+        </div>
+        <div class="mini-body">
+          <b class="mono" id="pirCount">– ISR</b>
+        </div>
+        <span class="mini-foot">Rising-edge interrupts on GPIO27 (no polling)</span>
       </div>
     </div>
-  </section>
 
-  <!-- Bottom Section: Room Environment Chart + Embedded Architecture Health -->
-  <section class="bottom-grid" style="margin-top: 20px;">
-    <div class="card">
+    <div class="card room-card">
       <div class="card-header">
         <div>
-          <h3 class="card-title">Room Environment History (DHT11)</h3>
-          <p class="card-desc">Temperature (°C) and humidity (%) trends used as AI inputs · use the bar below to scroll through today</p>
+          <div class="title-row">
+            <h3 class="card-title">Room Environment History (DHT11)</h3>
+            <span class="gw-tag">GATEWAY</span>
+          </div>
+          <p class="card-desc">Temperature (°C) and humidity (%) trends used as AI inputs · point at the chart and scroll the mouse wheel, or use the bar below</p>
         </div>
       </div>
       <div class="chart-wrap room-chart-wrap">
@@ -194,33 +218,36 @@
         <span class="chart-scroll-range mono" id="roomScrollRange">–</span>
       </div>
     </div>
+  </section>
 
+  <!-- Firmware status of both boards -->
+  <section class="board-section board-system">
     <div class="card">
       <div class="card-header">
         <div>
           <h3 class="card-title">Embedded Subsystem Status (E1–E5)</h3>
-          <p class="card-desc">Detailed firmware operating status</p>
+          <p class="card-desc">Detailed firmware operating status · tags show which board runs each item</p>
         </div>
       </div>
       <div class="sys-specs">
         <div class="spec-row">
-          <span class="spec-key">E1 · Gateway RTOS</span>
+          <span class="spec-key">E1 · Gateway RTOS <span class="gw-tag">GATEWAY</span></span>
           <span class="spec-val mono">FreeRTOS 4 Tasks + Queue</span>
         </div>
         <div class="spec-row">
-          <span class="spec-key">E2 · Motion Trigger</span>
+          <span class="spec-key">E2 · Motion Trigger <span class="gw-tag">GATEWAY</span></span>
           <span class="spec-val mono">GPIO27 Rising ISR (No Polling)</span>
         </div>
         <div class="spec-row">
-          <span class="spec-key">E3 · Node Power Mode</span>
+          <span class="spec-key">E3 · Node Power Mode <span class="node-tag">NODE</span></span>
           <span class="spec-val mono">Deep Sleep 10s (INA219 Verified)</span>
         </div>
         <div class="spec-row">
-          <span class="spec-key">E4 · Link Reliability</span>
+          <span class="spec-key">E4 · Link Reliability <span class="node-tag">NODE</span> <span class="gw-tag">GATEWAY</span></span>
           <span class="spec-val mono">ESP-NOW ACK + Store-and-Forward</span>
         </div>
         <div class="spec-row">
-          <span class="spec-key">E5 · Cloud Security</span>
+          <span class="spec-key">E5 · Cloud Security <span class="gw-tag">GATEWAY</span></span>
           <span class="spec-val mono">TLS + Firebase Auth + No Secrets</span>
         </div>
       </div>

@@ -46,7 +46,8 @@ function updatePerSensorStatuses(v, deviceOnline) {
     setSensorBadge("st-temp", "card-temp", false);
     setSensorBadge("st-rh", "card-rh", false);
     setSensorBadge("st-sound", "card-sound", false);
-    setSensorBadge("st-link", "card-link", false);
+    setSensorBadge("st-rssi", "card-rssi", false);
+    setSensorBadge("st-pir", "card-pir", false);
     return;
   }
 
@@ -55,14 +56,16 @@ function updatePerSensorStatuses(v, deviceOnline) {
   const tempOk = typeof v.room_t === "number" && !Number.isNaN(v.room_t) && v.room_t > 0;
   const rhOk = typeof v.room_rh === "number" && !Number.isNaN(v.room_rh) && v.room_rh > 0;
   const soundOk = typeof v.sound_p2p === "number" && !Number.isNaN(v.sound_p2p) && v.sound_p2p >= 0;
-  const linkOk = typeof v.rssi === "number" && v.rssi !== 0;
+  const rssiOk = typeof v.rssi === "number" && v.rssi !== 0;
+  const pirOk = typeof v.motion_count === "number" && !Number.isNaN(v.motion_count);
 
   setSensorBadge("st-hx711", null, hx711Ok);
   setSensorBadge("st-hcsr04", "card-hcsr04", hcsr04Ok);
   setSensorBadge("st-temp", "card-temp", tempOk);
   setSensorBadge("st-rh", "card-rh", rhOk);
   setSensorBadge("st-sound", "card-sound", soundOk);
-  setSensorBadge("st-link", "card-link", linkOk);
+  setSensorBadge("st-rssi", "card-rssi", rssiOk);
+  setSensorBadge("st-pir", "card-pir", pirOk);
 }
 
 function updateDeviceOnlineStatus() {
@@ -299,6 +302,32 @@ function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null
     else return;
     e.preventDefault();
   });
+
+  // ชี้เมาส์ที่กราฟ (หรือแถบ) แล้วหมุนล้อ/ปัดแทร็กแพดซ้าย-ขวา เพื่อเลื่อนโดยไม่ต้องคลิก
+  // ล้อหมุนลง/ปัดขวา = ไปทางข้อมูลใหม่ (ขวา) ล้อหมุนขึ้น/ปัดซ้าย = ย้อนไปข้อมูลเก่า (ซ้าย)
+  // ถ้าชนขอบแล้ว (เลื่อนต่อไม่ได้) จะไม่ดักล้อ ปล่อยให้เลื่อนหน้าเว็บตามปกติ
+  let wheelRest = 0;
+  const WHEEL_UNIT = { 0: 1, 1: 33, 2: 400 }; // deltaMode: pixel / line / page
+  const onWheel = (e) => {
+    if (e.ctrlKey) return; // Ctrl + ล้อ = ซูมหน้าเว็บของเบราว์เซอร์
+    const { min, span } = readView();
+    if (!total || span >= total) return;
+    const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    const delta = raw * (WHEEL_UNIT[e.deltaMode] ?? 1);
+    if (!delta) return;
+    if ((delta < 0 && min <= 0) || (delta > 0 && min + span >= total)) {
+      wheelRest = 0;
+      return;
+    }
+    e.preventDefault();
+    wheelRest += delta * span * 0.001; // ล้อ 1 คลิก (100) = เลื่อน 10% ของช่วงที่เห็น
+    const step = Math.trunc(wheelRest);
+    if (!step) return;
+    wheelRest -= step;
+    setView(min + step, span);
+  };
+  chart.canvas.addEventListener("wheel", onWheel, { passive: false });
+  track.addEventListener("wheel", onWheel, { passive: false });
 
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(render).observe(track);
 
@@ -615,7 +644,7 @@ function renderSensorsPage(v, historyRows = []) {
   const rhPct = Math.min(100, Math.max(0, Math.round(v.room_rh ?? 0)));
   $("rhBar").style.width = `${rhPct}%`;
   $("rssi").textContent = `${v.rssi} dBm`;
-  $("pirCount").textContent = `PIR ISR Interrupts: ${v.motion_count}`;
+  $("pirCount").textContent = `${v.motion_count ?? "–"} ISR`;
 
   if (historyRows.length) {
     renderWeightChart(historyRows);
