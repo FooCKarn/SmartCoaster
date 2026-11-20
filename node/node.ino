@@ -184,6 +184,7 @@ void retare(const char *why) {
 float readWeight() {
   if (!scale.wait_ready_timeout(500)) return NAN;  // HX711 ไม่ตอบ ส่ง NaN แทนการค้าง
   float w = scale.get_units(5);
+  if (!isfinite(w) || w > 5000 || w < -5000) return NAN;   // ค่าหลุดโลก (สายหลวม/HX711 อ่านผิด) ไม่ส่ง
   if (w < NEG_RETARE_G) {
     if (++negCount >= 3) { retare("ค่าติดลบ แท่นว่างอยู่"); w = scale.get_units(5); }
   } else {
