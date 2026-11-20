@@ -52,7 +52,7 @@ const int      SIGN_UP_DEG = 90, SIGN_DOWN_DEG = 0;
 // ใช้เฉพาะ SERVO_MODE 2
 const int      SERVO_STOP_US  = 1500;  // พัลส์ที่เซอร์โวหยุด ใช้คำนวณทิศและความเร็ว
 const int      SERVO_SPEED_US = 200;   // ห่างจากจุดหยุดเท่านี้ = ความเร็ว (มาก = เร็ว ไม่เกินราว 900)
-const uint32_t SERVO_MOVE_MS  = 450;   // หมุนนานเท่านี้แล้วหยุด ปรับจนป้ายยกได้มุมที่ต้องการ
+const uint32_t SERVO_MOVE_MS  = 480;   // หมุนนานเท่านี้แล้วหยุด ปรับจนป้ายยกได้มุมที่ต้องการ
 const int      SERVO_UP_DIR   = -1;    // ทิศตอนยกป้าย (หันหน้าเข้าด้านที่มีธง) 1 = ธงพักด้านขวา -1 = ธงพักด้านซ้าย
 const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 วินาที
 const uint32_t SENSE_EVERY_MS = 5000;   // อ่าน DHT11 / เสียง ทุก 5 วินาที
@@ -127,7 +127,6 @@ void setSignLocked(bool up, const char *why) {
 }
 
 #if SERVO_MODE == 2
-// รุ่น 360°: ป้ายเปลี่ยนสถานะ → หมุนไปทางนั้น SERVO_MOVE_MS แล้วตัดพัลส์ให้หยุด
 // ตอนเปิดเครื่องถือว่าป้ายลงอยู่ ถ้าไม่ใช่ ให้หมุนป้ายลงด้วยมือก่อนเปิด
 void servoTask(void *) {
   int target = SIGN_DOWN_DEG;
