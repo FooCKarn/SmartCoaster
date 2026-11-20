@@ -14,7 +14,7 @@
 //   (กระแสทั้งหมดที่บอร์ดดึงจากแบตจะไหลผ่าน INA219)
 // หาไม่เจอ INA219 ก็รันต่อได้ แค่ไม่มีค่ากระแส
 //
-// LED สีฟ้ากะพริบ = เลขขั้นปัจจุบัน (1-6 ครั้ง) ทุก 5 วิ, ผ่านครบทุกขั้น = ติดค้าง
+// LED สีฟ้ากะพริบ = เลขขั้นปัจจุบัน (1-9 ครั้ง) ทุก 5 วิ, ผ่านครบทุกขั้น = ติดค้าง
 // Serial: c = ล้าง log
 #include <WiFi.h>
 #include <esp_now.h>
@@ -27,15 +27,18 @@ const int VSENSE_PIN = 34;
 const float DIVIDER = 2.0f;
 const uint8_t WIFI_CHANNEL = 4;
 const uint32_t STEP_MS = 5000;
-const int NSTEP = 6;
+const int NSTEP = 9;
 const char *STEP_NAME[NSTEP + 1] = {
   "-",
   "1 CPU 80 MHz เฉยๆ (ไม่มีวิทยุ)",
   "2 CPU 240 MHz (ไม่มีวิทยุ)",
   "3 เปิด WiFi กำลังส่งต่ำสุด 2 dBm",
-  "4 ส่ง ESP-NOW รัว ที่ 8.5 dBm",
-  "5 ส่ง ESP-NOW รัว ที่ 13 dBm",
-  "6 ส่ง ESP-NOW รัว ที่ 20 dBm (เต็มกำลัง)",
+  "4 ส่งทีละ 1 แพ็กเก็ต/วิ ที่ 2 dBm",
+  "5 ส่ง ESP-NOW รัว ที่ 2 dBm",
+  "6 ส่งทีละ 1 แพ็กเก็ต/วิ ที่ 8.5 dBm",
+  "7 ส่ง ESP-NOW รัว ที่ 8.5 dBm",
+  "8 ส่ง ESP-NOW รัว ที่ 13 dBm",
+  "9 ส่ง ESP-NOW รัว ที่ 20 dBm (เต็มกำลัง)",
 };
 const uint8_t BCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -138,9 +141,10 @@ void enterStep(int s) {
       esp_now_init();
       { esp_now_peer_info_t p = {}; memcpy(p.peer_addr, BCAST, 6); p.channel = WIFI_CHANNEL; esp_now_add_peer(&p); }
       break;
-    case 4: esp_wifi_set_max_tx_power(34); break;
-    case 5: esp_wifi_set_max_tx_power(52); break;
-    case 6: esp_wifi_set_max_tx_power(80); break;
+    case 4: case 5: esp_wifi_set_max_tx_power(8); break;    // 2 dBm (ต่ำสุด)
+    case 6: case 7: esp_wifi_set_max_tx_power(34); break;   // 8.5 dBm (ค่าใน node ตอนนี้)
+    case 8: esp_wifi_set_max_tx_power(52); break;
+    case 9: esp_wifi_set_max_tx_power(80); break;
   }
   blinkN(s);
 }
@@ -186,8 +190,12 @@ void loop() {
   if (mv > maxMv[step]) maxMv[step] = mv;
   if (haveIna) inaSample();
 
-  if (step >= 4 && step <= NSTEP) {        // ส่งแพ็กเก็ตรัวๆ = จำลองโหลดตอนส่งจริง
-    static uint8_t payload[200];
+  static uint8_t payload[200];
+  static uint32_t lastSingle = 0;
+  if (step == 4 || step == 6) {            // ส่งทีละแพ็กเก็ต ห่างกัน 1 วิ (ใกล้เคียง node จริงที่ส่งทุก 5 วิ)
+    if (millis() - lastSingle >= 1000) { lastSingle = millis(); esp_now_send(BCAST, payload, 32); }
+    delay(2);
+  } else if (step >= 5) {                  // ส่งรัวๆ = โหลดหนักสุด
     esp_now_send(BCAST, payload, sizeof payload);
     delay(5);
   } else {
