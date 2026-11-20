@@ -173,8 +173,9 @@ const MOCK_DATA = {
 // ids         = id ของ track / thumb / ข้อความช่วงเวลา
 // defaultSpan = จำนวนจุดที่แสดงตอนเริ่มต้น (Infinity = แสดงทั้งหมด)
 // limits      = object limits.x ของ plugin zoom (ถ้ามี) ใช้กันเลื่อนเลยขอบข้อมูล
-// onChange    = เรียกทุกครั้งที่วาดแถบใหม่ ส่ง { full } (true = เห็นข้อมูลทั้งหมดอยู่)
-function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null, onChange = null } = {}) {
+// onChange    = เรียกทุกครั้งที่วาดแถบใหม่ ส่ง { full, atDefault } (full = เห็นข้อมูลทั้งหมดอยู่, atDefault = อยู่ที่มุมมองเริ่มต้น)
+// wheelOnChart = true: ล้อเมาส์บนตัวกราฟเลื่อนช่วงเวลา / false: ปล่อยให้ plugin zoom ใช้ล้อซูมแทน (ล้อบนแถบเลื่อนยังเลื่อนได้)
+function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null, onChange = null, wheelOnChart = true } = {}) {
   const track = $(ids.track);
   const thumb = $(ids.thumb);
   const rangeEl = $(ids.range);
@@ -210,7 +211,7 @@ function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null
       const labels = chart.data.labels;
       rangeEl.textContent = total ? `${labels[min]} – ${labels[min + span - 1]}` : "–";
     }
-    if (onChange) onChange({ full });
+    if (onChange) onChange({ full, atDefault: full || (state.followEnd && Math.abs(span - Math.min(defaultSpan, total)) <= 1) });
   }
 
   // จำช่วงที่ผู้ใช้เลือก เพื่อคงไว้ตอนมีข้อมูลใหม่เข้ามา (ถ้าอยู่ท้ายสุดจะตามข้อมูลล่าสุดต่อไป)
@@ -326,7 +327,7 @@ function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null
     wheelRest -= step;
     setView(min + step, span);
   };
-  chart.canvas.addEventListener("wheel", onWheel, { passive: false });
+  if (wheelOnChart) chart.canvas.addEventListener("wheel", onWheel, { passive: false });
   track.addEventListener("wheel", onWheel, { passive: false });
 
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(render).observe(track);
@@ -343,7 +344,7 @@ let chartRoom = null;
 let weightScroller = null;
 let roomScroller = null;
 const ROOM_DEFAULT_POINTS = 30; // กราฟห้องเริ่มต้นแสดง 30 ค่าล่าสุด แล้วเลื่อนย้อนดูได้
-const WEIGHT_DEFAULT_POINTS = 60; // กราฟน้ำหนักเริ่มต้นแสดง 60 ค่าล่าสุด แล้วเลื่อนย้อนดูได้ (ไม่มีการซูม)
+const WEIGHT_DEFAULT_POINTS = 60; // กราฟน้ำหนักเริ่มต้นแสดง 60 ค่าล่าสุด แล้วเลื่อนย้อนดูได้ (ซูมได้ด้วยล้อเมาส์/ลากคลุม)
 const weightLimitsX = { min: 0, max: 0 }; // แก้ค่าตามจำนวนข้อมูลใน scroller.refresh()
 
 if (currentPage === "sensors" && hasChart) {
@@ -384,8 +385,28 @@ if (currentPage === "sensors" && hasChart) {
             pan: {
               enabled: true,
               mode: "x",
+              modifierKey: "shift",
               onPan: () => { if (weightScroller) weightScroller.sync(); },
               onPanComplete: () => { if (weightScroller) weightScroller.settle(); },
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1,
+              },
+              pinch: {
+                enabled: true,
+              },
+              drag: {
+                enabled: true,
+                backgroundColor: "rgba(26, 141, 174, 0.16)",
+                borderColor: "#1a8dae",
+                borderWidth: 1,
+                threshold: 8,
+              },
+              mode: "x",
+              onZoom: () => { if (weightScroller) weightScroller.sync(); },
+              onZoomComplete: () => { if (weightScroller) weightScroller.settle(); },
             },
             limits: {
               x: weightLimitsX,
@@ -402,6 +423,11 @@ if (currentPage === "sensors" && hasChart) {
           },
         },
       },
+    });
+
+    // Double-click chart to reset zoom
+    $("chartW").addEventListener("dblclick", () => {
+      if (weightScroller) weightScroller.reset();
     });
   }
 
@@ -442,13 +468,24 @@ if (currentPage === "sensors" && hasChart) {
   weightScroller = createChartScroller(
     chartW,
     { track: "weightScrollTrack", thumb: "weightScrollThumb", range: "weightScrollRange" },
-    { defaultSpan: WEIGHT_DEFAULT_POINTS, limits: weightLimitsX }
+    {
+      defaultSpan: WEIGHT_DEFAULT_POINTS,
+      limits: weightLimitsX,
+      wheelOnChart: false, // ล้อบนกราฟน้ำหนัก = ซูม (เลื่อนด้วยแถบ หรือ Shift + ลาก)
+      onChange: ({ atDefault }) => { if ($("resetWeightZoom")) $("resetWeightZoom").hidden = atDefault; },
+    }
   );
   roomScroller = createChartScroller(
     chartRoom,
     { track: "roomScrollTrack", thumb: "roomScrollThumb", range: "roomScrollRange" },
     { defaultSpan: ROOM_DEFAULT_POINTS }
   );
+}
+
+if (currentPage === "sensors" && $("resetWeightZoom")) {
+  $("resetWeightZoom").addEventListener("click", () => {
+    if (weightScroller) weightScroller.reset();
+  });
 }
 
 function setStatusRow(iconBoxId, dotId, level) {
