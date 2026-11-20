@@ -169,7 +169,7 @@ const MOCK_DATA = {
 // chart       = กราฟ Chart.js (แกน x เป็นแบบ category คือเลขลำดับของข้อมูล)
 // ids         = id ของ track / thumb / ข้อความช่วงเวลา
 // defaultSpan = จำนวนจุดที่แสดงตอนเริ่มต้น (Infinity = แสดงทั้งหมด)
-// limits      = object limits.x ของ plugin zoom (ถ้ามี) ใช้กันเลื่อน/ซูมเลยขอบข้อมูล
+// limits      = object limits.x ของ plugin zoom (ถ้ามี) ใช้กันเลื่อนเลยขอบข้อมูล
 // onChange    = เรียกทุกครั้งที่วาดแถบใหม่ ส่ง { full } (true = เห็นข้อมูลทั้งหมดอยู่)
 function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null, onChange = null } = {}) {
   const track = $(ids.track);
@@ -314,7 +314,8 @@ let chartRoom = null;
 let weightScroller = null;
 let roomScroller = null;
 const ROOM_DEFAULT_POINTS = 30; // กราฟห้องเริ่มต้นแสดง 30 ค่าล่าสุด แล้วเลื่อนย้อนดูได้
-const weightLimitsX = { min: 0, max: 0, minRange: 2 }; // แก้ค่าตามจำนวนข้อมูลใน scroller.refresh()
+const WEIGHT_DEFAULT_POINTS = 60; // กราฟน้ำหนักเริ่มต้นแสดง 60 ค่าล่าสุด แล้วเลื่อนย้อนดูได้ (ไม่มีการซูม)
+const weightLimitsX = { min: 0, max: 0 }; // แก้ค่าตามจำนวนข้อมูลใน scroller.refresh()
 
 if (currentPage === "sensors" && hasChart) {
   if (window.ChartZoom) {
@@ -351,28 +352,8 @@ if (currentPage === "sensors" && hasChart) {
             pan: {
               enabled: true,
               mode: "x",
-              modifierKey: "shift",
               onPan: () => { if (weightScroller) weightScroller.sync(); },
               onPanComplete: () => { if (weightScroller) weightScroller.settle(); },
-            },
-            zoom: {
-              wheel: {
-                enabled: true,
-                speed: 0.1,
-              },
-              pinch: {
-                enabled: true,
-              },
-              drag: {
-                enabled: true,
-                backgroundColor: "rgba(26, 141, 174, 0.16)",
-                borderColor: "#1a8dae",
-                borderWidth: 1,
-                threshold: 8,
-              },
-              mode: "x",
-              onZoom: () => { if (weightScroller) weightScroller.sync(); },
-              onZoomComplete: () => { if (weightScroller) weightScroller.settle(); },
             },
             limits: {
               x: weightLimitsX,
@@ -388,11 +369,6 @@ if (currentPage === "sensors" && hasChart) {
           },
         },
       },
-    });
-
-    // Double-click chart to reset zoom
-    $("chartW").addEventListener("dblclick", () => {
-      if (weightScroller) weightScroller.reset();
     });
   }
 
@@ -433,22 +409,13 @@ if (currentPage === "sensors" && hasChart) {
   weightScroller = createChartScroller(
     chartW,
     { track: "weightScrollTrack", thumb: "weightScrollThumb", range: "weightScrollRange" },
-    {
-      limits: weightLimitsX,
-      onChange: ({ full }) => { if ($("resetWeightZoom")) $("resetWeightZoom").hidden = full; },
-    }
+    { defaultSpan: WEIGHT_DEFAULT_POINTS, limits: weightLimitsX }
   );
   roomScroller = createChartScroller(
     chartRoom,
     { track: "roomScrollTrack", thumb: "roomScrollThumb", range: "roomScrollRange" },
     { defaultSpan: ROOM_DEFAULT_POINTS }
   );
-}
-
-if (currentPage === "sensors" && $("resetWeightZoom")) {
-  $("resetWeightZoom").addEventListener("click", () => {
-    if (weightScroller) weightScroller.reset();
-  });
 }
 
 function setStatusRow(iconBoxId, dotId, level) {

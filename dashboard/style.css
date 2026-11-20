@@ -498,28 +498,12 @@ a:focus-visible, button:focus-visible {
 
 
 
-.reset-zoom-btn {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--aqua-deep);
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 9px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.reset-zoom-btn:hover {
-  background: var(--aqua-soft);
-  border-color: var(--aqua);
-}
-.reset-zoom-btn[hidden] {
-  display: none !important;
+#chartW {
+  cursor: grab;
 }
 
-#chartW {
-  cursor: crosshair;
+#chartW:active {
+  cursor: grabbing;
 }
 
 .weight-badge {
