@@ -532,6 +532,7 @@ a:focus-visible, button:focus-visible {
   min-width: 0;
 }
 @media (max-width: 540px) { .sensor-grid { grid-template-columns: 1fr; } }
+.sensor-grid > .mini-card:last-child { grid-column: 1 / -1; }
 
 .mini-card {
   background: var(--surface);
@@ -745,6 +746,10 @@ a:focus-visible, button:focus-visible {
   .sensor-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .sensor-grid > .mini-card:last-child {
+    grid-column: span 2;
+  }
 }
 
 /* Small tablet / landscape phone (<= 768px) */
@@ -787,6 +792,10 @@ a:focus-visible, button:focus-visible {
   .sensor-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .sensor-grid > .mini-card:last-child {
+    grid-column: 1 / -1;
   }
 
   .room-chart-wrap {
@@ -865,4 +874,67 @@ a:focus-visible, button:focus-visible {
   .room-chart-wrap {
     height: 190px;
   }
+}
+/* Scroll bar under charts (Sensors page) */
+.chart-scroll {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.chart-scroll-track {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.chart-scroll-track:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 2px;
+}
+
+.chart-scroll-thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--water-top);
+  cursor: grab;
+  transition: background 0.15s;
+}
+
+.chart-scroll-track:hover .chart-scroll-thumb,
+.chart-scroll-track.is-dragging .chart-scroll-thumb {
+  background: var(--aqua);
+}
+
+.chart-scroll-track.is-dragging .chart-scroll-thumb { cursor: grabbing; }
+
+.chart-scroll-track.is-full {
+  cursor: default;
+}
+
+.chart-scroll-track.is-full .chart-scroll-thumb {
+  background: var(--line);
+  cursor: default;
+}
+
+.chart-scroll-range {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .chart-scroll { flex-direction: column; align-items: stretch; gap: 6px; }
+  .chart-scroll-range { text-align: center; }
 }

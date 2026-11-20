@@ -48,10 +48,10 @@
   <div class="telemetry-bar">
     <div class="telemetry-left">
       <span class="pulse-dot" id="connDot"></span>
-      <span id="status">MOCK TELEMETRY MODE · COASTER-01 (ESP-NOW + ACK)</span>
+      <span id="status">CONNECTING TO FIREBASE...</span>
     </div>
     <div class="telemetry-right mono">
-      <span id="seqBadge">SEQ #1532</span>
+      <span id="seqBadge">SEQ #–</span>
       <span class="sep">|</span>
       <span id="lastUpdate">UPDATED: --:--:--</span>
       <span id="who" hidden><span class="sep">|</span><span id="whoEmail"></span> <a href="#" id="logout">Sign out</a></span>
@@ -66,7 +66,7 @@
     <button type="submit">Sign in</button>
   </form>
 
-  <!-- Top Section: Load Cell Real-time Chart + 6 Sensor Cards -->
+  <!-- Top Section: Load Cell Real-time Chart + 5 Sensor Cards -->
   <section class="sensor-layout">
     <div class="card sensor-chart-card">
       <div class="card-header">
@@ -76,16 +76,22 @@
             <span class="node-tag">NODE</span>
             <span class="sensor-badge is-offline" id="st-hx711"><i class="status-dot"></i><span>Offline</span></span>
           </div>
-          <p class="card-desc">Today (00:00 – now) · Scroll wheel or drag on chart to zoom, drag to pan</p>
+          <p class="card-desc">Today (00:00 – now) · Scroll wheel or drag on chart to zoom, use the bar below to scroll</p>
         </div>
 
         <div class="chart-controls">
           <button type="button" class="reset-zoom-btn" id="resetWeightZoom" hidden title="Reset zoom (or double-click chart)">Reset Zoom</button>
-          <span class="weight-badge mono" id="w">312.4 g</span>
+          <span class="weight-badge mono" id="w">– g</span>
         </div>
       </div>
       <div class="chart-wrap sensor-chart-wrap">
         <canvas id="chartW"></canvas>
+      </div>
+      <div class="chart-scroll">
+        <div class="chart-scroll-track" id="weightScrollTrack" role="scrollbar" aria-orientation="horizontal" aria-controls="chartW" aria-label="Scroll weight chart through time" tabindex="0">
+          <div class="chart-scroll-thumb" id="weightScrollThumb"></div>
+        </div>
+        <span class="chart-scroll-range mono" id="weightScrollRange">–</span>
       </div>
     </div>
 
@@ -100,28 +106,12 @@
           </div>
         </div>
         <div class="mini-body">
-          <b class="mono" id="d">20 cm</b>
+          <b class="mono" id="d">– cm</b>
         </div>
-        <span class="mini-foot" id="dDesc">User detected at desk (&lt; 100 cm)</span>
+        <span class="mini-foot" id="dDesc">–</span>
       </div>
 
-      <!-- 2. Battery -->
-      <div class="mini-card accent-green" id="card-batt">
-        <div class="mini-top">
-          <small>BATTERY 18650 · E3</small>
-          <div class="tag-group">
-            <span class="node-tag">NODE</span>
-            <span class="sensor-badge is-offline" id="st-batt"><i class="status-dot"></i><span>Offline</span></span>
-          </div>
-        </div>
-        <div class="mini-body">
-          <b class="mono" id="batt">68 %</b>
-          <div class="mini-bar"><div class="mini-bar-fill" id="battBar" style="width: 68%;"></div></div>
-        </div>
-        <span class="mini-foot mono" id="battMv">3,910 mV · Deep Sleep 10s</span>
-      </div>
-
-      <!-- 3. Temperature -->
+      <!-- 2. Temperature -->
       <div class="mini-card accent-yellow" id="card-temp">
         <div class="mini-top">
           <small>TEMPERATURE · DHT11</small>
@@ -131,12 +121,12 @@
           </div>
         </div>
         <div class="mini-body">
-          <b class="mono" id="t">30 °C</b>
+          <b class="mono" id="t">– °C</b>
         </div>
         <span class="mini-foot">Used to estimate hydration needs</span>
       </div>
 
-      <!-- 4. Humidity -->
+      <!-- 3. Humidity -->
       <div class="mini-card accent-blue" id="card-rh">
         <div class="mini-top">
           <small>HUMIDITY · DHT11</small>
@@ -146,13 +136,13 @@
           </div>
         </div>
         <div class="mini-body">
-          <b class="mono" id="rh">67 %</b>
-          <div class="mini-bar"><div class="mini-bar-fill" id="rhBar" style="width: 67%;"></div></div>
+          <b class="mono" id="rh">– %</b>
+          <div class="mini-bar"><div class="mini-bar-fill" id="rhBar" style="width: 0%;"></div></div>
         </div>
         <span class="mini-foot">Relative humidity in the room</span>
       </div>
 
-      <!-- 5. Sound -->
+      <!-- 4. Sound -->
       <div class="mini-card accent-yellow" id="card-sound">
         <div class="mini-top">
           <small>SOUND LEVEL · KY-038</small>
@@ -162,14 +152,14 @@
           </div>
         </div>
         <div class="mini-body">
-          <b class="mono" id="snd">120 p2p</b>
-          <div class="mini-bar zones"><div class="mini-bar-fill" id="sndBar" style="width: 24%;"></div></div>
+          <b class="mono" id="snd">– p2p</b>
+          <div class="mini-bar zones"><div class="mini-bar-fill" id="sndBar" style="width: 0%;"></div></div>
           <div class="snd-scale"><span>Quiet</span><span>Normal</span><span>Loud</span></div>
         </div>
-        <span class="mini-foot" id="sndState">Normal sound (alerts enabled)</span>
+        <span class="mini-foot" id="sndState">–</span>
       </div>
 
-      <!-- 6. Signal & PIR ISR -->
+      <!-- 5. Signal & PIR ISR -->
       <div class="mini-card accent-blue" id="card-link">
         <div class="mini-top">
           <small>ESP-NOW RSSI &amp; PIR · E2</small>
@@ -179,9 +169,9 @@
           </div>
         </div>
         <div class="mini-body">
-          <b class="mono" id="rssi">-54 dBm</b>
+          <b class="mono" id="rssi">– dBm</b>
         </div>
-        <span class="mini-foot mono" id="pirCount">PIR ISR Interrupts: 14</span>
+        <span class="mini-foot mono" id="pirCount">PIR ISR Interrupts: –</span>
       </div>
     </div>
   </section>
@@ -192,11 +182,17 @@
       <div class="card-header">
         <div>
           <h3 class="card-title">Room Environment History (DHT11)</h3>
-          <p class="card-desc">Temperature (°C) and humidity (%) trends used as AI inputs</p>
+          <p class="card-desc">Temperature (°C) and humidity (%) trends used as AI inputs · use the bar below to scroll through today</p>
         </div>
       </div>
       <div class="chart-wrap room-chart-wrap">
         <canvas id="chartRoom"></canvas>
+      </div>
+      <div class="chart-scroll">
+        <div class="chart-scroll-track" id="roomScrollTrack" role="scrollbar" aria-orientation="horizontal" aria-controls="chartRoom" aria-label="Scroll room environment chart through time" tabindex="0">
+          <div class="chart-scroll-thumb" id="roomScrollThumb"></div>
+        </div>
+        <span class="chart-scroll-range mono" id="roomScrollRange">–</span>
       </div>
     </div>
 

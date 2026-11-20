@@ -46,10 +46,10 @@
   <div class="telemetry-bar">
     <div class="telemetry-left">
       <span class="pulse-dot" id="connDot"></span>
-      <span id="status">MOCK DATA MODE · coaster-01</span>
+      <span id="status">LOADING...</span>
     </div>
     <div class="telemetry-right mono">
-      <span id="seqBadge">SEQ #1532</span>
+      <span id="seqBadge">SEQ #–</span>
       <span class="sep">|</span>
       <span id="lastUpdate">UPDATED: --:--:--</span>
       <span id="who" hidden><span class="sep">|</span><span id="whoEmail"></span> <a href="#" id="logout">Sign out</a></span>
@@ -72,7 +72,7 @@
           <h2 class="card-title">Today's Water Intake</h2>
           <p class="card-desc">Counted when a drink is detected (weight decreases by more than 20 g)</p>
         </div>
-        <span class="pill pill-blue mono" id="hourlyRateBadge">168 ml/hr</span>
+        <span class="pill pill-blue mono" id="hourlyRateBadge">– ml/hr</span>
       </div>
 
       <div class="hydration-visual">
@@ -85,16 +85,16 @@
           </div>
           <div class="glass" role="img" aria-label="Water intake compared with your daily goal">
             <i></i><i></i><i></i>
-            <div class="water" id="waterLevel" style="height: 67.5%;"></div>
+            <div class="water" id="waterLevel" style="height: 0%;"></div>
           </div>
         </div>
 
         <div class="hydration-metrics">
           <div class="goal-block">
             <span class="metric-label goal-label">Daily Goal Progress</span>
-            <div class="metric-big mono" id="pctText">67.5%</div>
-            <div class="metric-sub mono" id="mlText">1,350 / 2,000 ml</div>
-            <p class="remain-note" id="remainText">650 ml remaining to reach your goal</p>
+            <div class="metric-big mono" id="pctText">–%</div>
+            <div class="metric-sub mono" id="mlText">– / 2,000 ml</div>
+            <p class="remain-note" id="remainText">–</p>
           </div>
 
           <div class="metric-footer">
@@ -102,15 +102,15 @@
             <div class="metric-row">
               <div>
                 <span class="metric-label">Last Drink</span>
-                <div class="metric-val mono" id="lastSipTime">14:20</div>
+                <div class="metric-val mono" id="lastSipTime">–</div>
               </div>
               <div>
                 <span class="metric-label">Amount</span>
-                <div class="metric-val mono text-sky" id="lastSipMl">+45 ml</div>
+                <div class="metric-val mono text-sky" id="lastSipMl">–</div>
               </div>
               <div>
                 <span class="metric-label">Coaster Weight</span>
-                <div class="metric-val mono" id="currentWeight">312.4 g</div>
+                <div class="metric-val mono" id="currentWeight">– g</div>
               </div>
             </div>
           </div>
@@ -134,55 +134,55 @@
       <div class="ai-list">
         <!-- 1. Hydration Risk -->
         <div class="ai-item" id="aiCard">
-          <div class="ai-circle bg-yellow" id="aiIconBox" aria-hidden="true">
+          <div class="ai-circle" id="aiIconBox" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 3s6 6.2 6 10.5A6 6 0 0 1 6 13.5C6 9.2 12 3 12 3z"/></svg>
           </div>
           <div class="ai-body">
             <div class="ai-top-row">
               <span class="ai-kicker">Hydration Risk</span>
               <span class="ai-meta mono" id="aiRightBadge">
-                <i class="status-dot dot-yellow" id="aiDot"></i>
-                <span id="aiScore">MODERATE</span>
+                <i class="status-dot" id="aiDot"></i>
+                <span id="aiScore">–</span>
               </span>
             </div>
-            <div class="ai-heading" id="aiStatusText">Drinking less water than usual</div>
-            <div class="ai-detail" id="aiSubText">Room temperature 30°C · Humidity 67%</div>
+            <div class="ai-heading" id="aiStatusText">Waiting for data</div>
+            <div class="ai-detail" id="aiSubText">–</div>
           </div>
         </div>
 
         <!-- 2. Desk Presence -->
         <div class="ai-item" id="deskCard">
-          <div class="ai-circle bg-green" id="deskIconBox" aria-hidden="true">
+          <div class="ai-circle" id="deskIconBox" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.6-3.6 3.2-5.6 6.5-5.6s5.9 2 6.5 5.6"/></svg>
           </div>
           <div class="ai-body">
             <div class="ai-top-row">
               <span class="ai-kicker">Desk Presence</span>
               <span class="ai-meta mono">
-                <i class="status-dot dot-green" id="deskDot"></i>
+                <i class="status-dot" id="deskDot"></i>
                 <span id="presenceCode">PIR + HC-SR04</span>
               </span>
             </div>
-            <div class="ai-heading" id="deskStatusText">At desk (alerts enabled)</div>
-            <div class="ai-detail" id="deskSubText">Distance 20 cm · Room is quiet</div>
+            <div class="ai-heading" id="deskStatusText">Waiting for data</div>
+            <div class="ai-detail" id="deskSubText">–</div>
           </div>
         </div>
 
         <!-- 3. Notifications -->
         <div class="ai-item" id="alertCard">
-          <div class="ai-circle bg-green" id="alertIconBox" aria-hidden="true">
+          <div class="ai-circle" id="alertIconBox" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
           </div>
           <div class="ai-body">
             <div class="ai-top-row">
               <span class="ai-kicker">Notifications</span>
               <span class="ai-meta mono">
-                <i class="status-dot dot-green" id="alertDot"></i>
+                <i class="status-dot" id="alertDot"></i>
                 <span id="alertCode">SG90 + LINE</span>
               </span>
             </div>
-            <div class="ai-heading" id="alertStatusText">System ready (alerts enabled)</div>
-            <div class="ai-detail" id="alertSubText">SG90: Retracted | LINE: Sent if the flag stays raised for 15 minutes</div>
+            <div class="ai-heading" id="alertStatusText">Waiting for data</div>
+            <div class="ai-detail" id="alertSubText">–</div>
           </div>
         </div>
       </div>
@@ -221,7 +221,7 @@
 <script>
   window.addEventListener("load", function () {
     var s = document.getElementById("status");
-    if (s && s.textContent.trim() === "MOCK DATA MODE · coaster-01") {
+    if (s && s.textContent.trim() === "LOADING...") {
       s.textContent = "app.js did not run · open via http://localhost:8000 (python -m http.server 8000) and check the Console (F12)";
     }
   });

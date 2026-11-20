@@ -43,7 +43,6 @@ function updatePerSensorStatuses(v, deviceOnline) {
   if (!deviceOnline || !v) {
     setSensorBadge("st-hx711", null, false);
     setSensorBadge("st-hcsr04", "card-hcsr04", false);
-    setSensorBadge("st-batt", "card-batt", false);
     setSensorBadge("st-temp", "card-temp", false);
     setSensorBadge("st-rh", "card-rh", false);
     setSensorBadge("st-sound", "card-sound", false);
@@ -53,7 +52,6 @@ function updatePerSensorStatuses(v, deviceOnline) {
 
   const hx711Ok = typeof v.weight_g === "number" && !Number.isNaN(v.weight_g);
   const hcsr04Ok = typeof v.dist_cm === "number" && !Number.isNaN(v.dist_cm);
-  const battOk = typeof v.batt_mv === "number" && v.batt_mv > 0;
   const tempOk = typeof v.room_t === "number" && !Number.isNaN(v.room_t) && v.room_t > 0;
   const rhOk = typeof v.room_rh === "number" && !Number.isNaN(v.room_rh) && v.room_rh > 0;
   const soundOk = typeof v.sound_p2p === "number" && !Number.isNaN(v.sound_p2p) && v.sound_p2p >= 0;
@@ -61,7 +59,6 @@ function updatePerSensorStatuses(v, deviceOnline) {
 
   setSensorBadge("st-hx711", null, hx711Ok);
   setSensorBadge("st-hcsr04", "card-hcsr04", hcsr04Ok);
-  setSensorBadge("st-batt", "card-batt", battOk);
   setSensorBadge("st-temp", "card-temp", tempOk);
   setSensorBadge("st-rh", "card-rh", rhOk);
   setSensorBadge("st-sound", "card-sound", soundOk);
@@ -167,11 +164,157 @@ const MOCK_DATA = {
 };
 
 // ============================================================================
+// แถบเลื่อนใต้กราฟ: thumb กว้างตามสัดส่วนช่วงที่เห็น ลาก/กดที่ราง/ใช้ปุ่มลูกศร เพื่อเลื่อนดูช่วงเวลาอื่น
+// ============================================================================
+// chart       = กราฟ Chart.js (แกน x เป็นแบบ category คือเลขลำดับของข้อมูล)
+// ids         = id ของ track / thumb / ข้อความช่วงเวลา
+// defaultSpan = จำนวนจุดที่แสดงตอนเริ่มต้น (Infinity = แสดงทั้งหมด)
+// limits      = object limits.x ของ plugin zoom (ถ้ามี) ใช้กันเลื่อน/ซูมเลยขอบข้อมูล
+// onChange    = เรียกทุกครั้งที่วาดแถบใหม่ ส่ง { full } (true = เห็นข้อมูลทั้งหมดอยู่)
+function createChartScroller(chart, ids, { defaultSpan = Infinity, limits = null, onChange = null } = {}) {
+  const track = $(ids.track);
+  const thumb = $(ids.thumb);
+  const rangeEl = $(ids.range);
+  if (!chart || !track || !thumb) return null;
+
+  const MIN_THUMB_PX = 28;
+  const state = { min: 0, span: defaultSpan, followEnd: true };
+  let total = 0;
+  let drag = null;
+
+  // ช่วงที่กราฟแสดงอยู่จริง (index ของจุดแรก, จำนวนจุด)
+  function readView() {
+    const x = chart.scales.x;
+    if (!x || !total) return { min: 0, span: 0 };
+    const min = Math.max(0, Math.round(x.min));
+    const max = Math.min(total - 1, Math.round(x.max));
+    return { min, span: Math.max(1, max - min + 1) };
+  }
+
+  function render() {
+    const { min, span } = readView();
+    const full = !total || span >= total;
+    const trackW = track.clientWidth;
+    const thumbW = full ? trackW : Math.max(MIN_THUMB_PX, (trackW * span) / total);
+    const free = trackW - thumbW;
+    thumb.style.width = `${thumbW}px`;
+    thumb.style.left = `${full ? 0 : (min / (total - span)) * free}px`;
+    track.classList.toggle("is-full", full);
+    track.setAttribute("aria-valuemin", "0");
+    track.setAttribute("aria-valuemax", String(full ? 0 : total - span));
+    track.setAttribute("aria-valuenow", String(min));
+    if (rangeEl) {
+      const labels = chart.data.labels;
+      rangeEl.textContent = total ? `${labels[min]} – ${labels[min + span - 1]}` : "–";
+    }
+    if (onChange) onChange({ full });
+  }
+
+  // จำช่วงที่ผู้ใช้เลือก เพื่อคงไว้ตอนมีข้อมูลใหม่เข้ามา (ถ้าอยู่ท้ายสุดจะตามข้อมูลล่าสุดต่อไป)
+  function remember() {
+    const { min, span } = readView();
+    state.min = min;
+    state.span = span >= total ? Infinity : span;
+    state.followEnd = min + span >= total;
+  }
+
+  function apply(min, span) {
+    const x = chart.options.scales.x;
+    if (span >= total) {
+      x.min = undefined;
+      x.max = undefined;
+    } else {
+      x.min = min;
+      x.max = min + span - 1;
+    }
+    chart.update("none");
+  }
+
+  function setView(min, span) {
+    span = Math.min(Math.max(1, span), total);
+    min = Math.min(Math.max(0, min), total - span);
+    apply(min, span);
+    remember();
+    render();
+  }
+
+  // เรียกทุกครั้งที่ข้อมูลในกราฟเปลี่ยน
+  function refresh() {
+    total = chart.data.labels.length;
+    if (limits) {
+      limits.min = 0;
+      limits.max = Math.max(0, total - 1);
+    }
+    const span = Math.min(state.span, total);
+    const min = state.followEnd ? total - span : Math.min(state.min, total - span);
+    apply(min, span);
+    render();
+  }
+
+  // plugin zoom ขยับกราฟเอง: อ่านค่ามาอัปเดตแถบ (ระหว่างลาก) / ดึงกลับให้อยู่ในขอบข้อมูล (ตอนปล่อย)
+  function sync() { remember(); render(); }
+  function settle() { const v = readView(); setView(v.min, v.span); }
+
+  function reset() {
+    state.span = defaultSpan;
+    state.followEnd = true;
+    refresh();
+  }
+
+  track.addEventListener("pointerdown", (e) => {
+    const { min, span } = readView();
+    if (!total || span >= total) return;
+    const free = track.clientWidth - thumb.offsetWidth;
+    if (free <= 0) return;
+    e.preventDefault();
+    track.focus({ preventScroll: true });
+    if (e.target === thumb) {
+      drag = { startX: e.clientX, startMin: min, span, free };
+      track.setPointerCapture(e.pointerId);
+      track.classList.add("is-dragging");
+    } else {
+      // กดที่ราง: ย้ายแถบไปอยู่กึ่งกลางตำแหน่งที่กด
+      const rect = track.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left - thumb.offsetWidth / 2) / free;
+      setView(Math.round(ratio * (total - span)), span);
+    }
+  });
+  track.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const shift = Math.round(((e.clientX - drag.startX) / drag.free) * (total - drag.span));
+    setView(drag.startMin + shift, drag.span);
+  });
+  const endDrag = () => { drag = null; track.classList.remove("is-dragging"); };
+  track.addEventListener("pointerup", endDrag);
+  track.addEventListener("pointercancel", endDrag);
+
+  track.addEventListener("keydown", (e) => {
+    const { min, span } = readView();
+    if (!total || span >= total) return;
+    const step = Math.max(1, Math.round(span * 0.1));
+    const moves = { ArrowLeft: -step, ArrowRight: step, PageUp: -span, PageDown: span };
+    if (e.key === "Home") setView(0, span);
+    else if (e.key === "End") setView(total - span, span);
+    else if (e.key in moves) setView(min + moves[e.key], span);
+    else return;
+    e.preventDefault();
+  });
+
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(render).observe(track);
+
+  return { refresh, reset, sync, settle };
+}
+
+// ============================================================================
 // 2. CHART INITIALIZATION
 // ============================================================================
 const hasChart = typeof Chart !== "undefined";
 let chartW = null;
 let chartRoom = null;
+let weightScroller = null;
+let roomScroller = null;
+const ROOM_DEFAULT_POINTS = 30; // กราฟห้องเริ่มต้นแสดง 30 ค่าล่าสุด แล้วเลื่อนย้อนดูได้
+const weightLimitsX = { min: 0, max: 0, minRange: 2 }; // แก้ค่าตามจำนวนข้อมูลใน scroller.refresh()
 
 if (currentPage === "sensors" && hasChart) {
   if (window.ChartZoom) {
@@ -209,9 +352,8 @@ if (currentPage === "sensors" && hasChart) {
               enabled: true,
               mode: "x",
               modifierKey: "shift",
-              onPanComplete: ({ chart }) => {
-                if ($("resetWeightZoom")) $("resetWeightZoom").hidden = !chart.isZoomedOrPanned();
-              },
+              onPan: () => { if (weightScroller) weightScroller.sync(); },
+              onPanComplete: () => { if (weightScroller) weightScroller.settle(); },
             },
             zoom: {
               wheel: {
@@ -229,12 +371,11 @@ if (currentPage === "sensors" && hasChart) {
                 threshold: 8,
               },
               mode: "x",
-              onZoomComplete: ({ chart }) => {
-                if ($("resetWeightZoom")) $("resetWeightZoom").hidden = !chart.isZoomedOrPanned();
-              },
+              onZoom: () => { if (weightScroller) weightScroller.sync(); },
+              onZoomComplete: () => { if (weightScroller) weightScroller.settle(); },
             },
             limits: {
-              x: { min: "original", max: "original", minRange: 2 },
+              x: weightLimitsX,
             },
           },
         },
@@ -251,10 +392,7 @@ if (currentPage === "sensors" && hasChart) {
 
     // Double-click chart to reset zoom
     $("chartW").addEventListener("dblclick", () => {
-      if (chartW && typeof chartW.resetZoom === "function") {
-        chartW.resetZoom();
-        if ($("resetWeightZoom")) $("resetWeightZoom").hidden = true;
-      }
+      if (weightScroller) weightScroller.reset();
     });
   }
 
@@ -291,12 +429,25 @@ if (currentPage === "sensors" && hasChart) {
       },
     });
   }
+
+  weightScroller = createChartScroller(
+    chartW,
+    { track: "weightScrollTrack", thumb: "weightScrollThumb", range: "weightScrollRange" },
+    {
+      limits: weightLimitsX,
+      onChange: ({ full }) => { if ($("resetWeightZoom")) $("resetWeightZoom").hidden = full; },
+    }
+  );
+  roomScroller = createChartScroller(
+    chartRoom,
+    { track: "roomScrollTrack", thumb: "roomScrollThumb", range: "roomScrollRange" },
+    { defaultSpan: ROOM_DEFAULT_POINTS }
+  );
 }
 
 if (currentPage === "sensors" && $("resetWeightZoom")) {
   $("resetWeightZoom").addEventListener("click", () => {
-    if (chartW && typeof chartW.resetZoom === "function") chartW.resetZoom();
-    $("resetWeightZoom").hidden = true;
+    if (weightScroller) weightScroller.reset();
   });
 }
 
@@ -471,7 +622,8 @@ function renderWeightChart(rows) {
   chartW.data.labels = todayRows.map((r) => r.time);
   chartW.data.datasets[0].data = todayRows.map((r) => r.weight_g);
   chartW.data.datasets[0].pointRadius = todayRows.length > 80 ? 0 : 3;
-  chartW.update("none");
+  if (weightScroller) weightScroller.refresh();
+  else chartW.update("none");
 }
 
 function renderSensorsPage(v, historyRows = []) {
@@ -497,26 +649,15 @@ function renderSensorsPage(v, historyRows = []) {
   $("rssi").textContent = `${v.rssi} dBm`;
   $("pirCount").textContent = `PIR ISR Interrupts: ${v.motion_count}`;
 
-  if (v.batt_mv > 0) {
-    const battPct = Math.min(100, Math.max(0, Math.round(((v.batt_mv - 3300) / (4200 - 3300)) * 100)));
-    $("batt").textContent = `${battPct} %`;
-    $("battBar").style.width = `${battPct}%`;
-    $("battMv").textContent = `${v.batt_mv.toLocaleString()} mV · Deep Sleep 10s`;
-  } else {
-    $("batt").textContent = "– %";
-    $("battBar").style.width = "0%";
-    $("battMv").textContent = "Not yet measured (batt_mv = 0)";
-  }
-
   if (historyRows.length) {
     renderWeightChart(historyRows);
 
-    const recentRoom = historyRows.slice(-30);
     if (chartRoom) {
-      chartRoom.data.labels = recentRoom.map((r) => r.time);
-      chartRoom.data.datasets[0].data = recentRoom.map((r) => r.temp);
-      chartRoom.data.datasets[1].data = recentRoom.map((r) => r.rh);
-      chartRoom.update();
+      chartRoom.data.labels = historyRows.map((r) => r.time);
+      chartRoom.data.datasets[0].data = historyRows.map((r) => r.temp);
+      chartRoom.data.datasets[1].data = historyRows.map((r) => r.rh);
+      if (roomScroller) roomScroller.refresh();
+      else chartRoom.update();
     }
   }
 }
