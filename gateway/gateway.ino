@@ -363,6 +363,7 @@ void nodeTask(void *) {
     JsonDocument rec;
     DrinkEvent ev;
     float amount = 0;
+    float refBefore = NAN;                 // น้ำหนักนิ่งก่อนหน้า (ก่อนดื่ม/เติม) ไว้โชว์บน dashboard
     {
       Lock l;
       S.rxCount++;
@@ -370,7 +371,7 @@ void nodeTask(void *) {
         S.lastDistCm = m.dist_cm;
         S.lastNodeMs = millis();
       }
-      float refBefore = S.drink.refWeight();
+      refBefore = S.drink.refWeight();
       ev = S.drink.update(m.weight_g, &amount);
       if (ev != EV_NONE) handleDrinkLocked(m, ev, amount);
       if (isnan(refBefore) && !isnan(S.drink.refWeight()))
@@ -417,7 +418,11 @@ void nodeTask(void *) {
       JsonDocument doc;
       doc["node_id"] = m.node_id;
       doc["type"]    = drinkEventName(ev);
-      doc["ml"]      = amount;
+      doc["ml"]      = amount;                       // = น้ำหนักที่หายไป (g) ≈ ml
+      if (!isnan(refBefore)) {
+        doc["w_from"] = roundf(refBefore * 10) / 10;                                   // น้ำหนักก่อนดื่ม
+        doc["w_to"]   = roundf((ev == EV_DRINK ? refBefore - amount : refBefore + amount) * 10) / 10;  // หลังดื่ม
+      }
       { Lock l; doc["ml_today"] = S.mlToday; }
       strlcpy(d.path, ev == EV_DRINK ? "drinks" : "refills", sizeof(d.path));
       stampItem(d, doc, m.age_ms, suffix);

@@ -122,6 +122,15 @@ function updateDeviceOnlineStatus() {
 
 setInterval(updateDeviceOnlineStatus, 2000);
 
+function mockWeightSeries(plateaus) {
+  const pts = plateaus.flatMap(([w, n]) => Array(n).fill(w));
+  const now = Date.now();
+  return pts.map((w, i) => {
+    const ts = now - (pts.length - 1 - i) * 5 * 60 * 1000;
+    return { ts, time: new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), weight_g: w, temp: 30, rh: 67 };
+  });
+}
+
 // ============================================================================
 // 1. MOCK DATA (ข้อมูลจำลองสำหรับผู้ใช้คนเดียว: coaster-01)
 // ============================================================================
@@ -153,17 +162,8 @@ const MOCK_DATA = {
     { time: "12:30", ml: 300, note: "With lunch" },
     { time: "11:10", ml: 150, note: "SG90 flag reminder" },
   ],
-  history: [
-    { ts: Date.now() - 240 * 60 * 1000, time: "10:20", weight_g: 480, temp: 28, rh: 64 },
-    { ts: Date.now() - 120 * 60 * 1000, time: "12:20", weight_g: 450, temp: 29, rh: 65 },
-    { ts: Date.now() - 30 * 60 * 1000,  time: "13:50", weight_g: 420, temp: 29, rh: 65 },
-    { ts: Date.now() - 25 * 60 * 1000,  time: "13:55", weight_g: 420, temp: 29, rh: 66 },
-    { ts: Date.now() - 20 * 60 * 1000,  time: "14:00", weight_g: 380, temp: 30, rh: 66 },
-    { ts: Date.now() - 15 * 60 * 1000,  time: "14:05", weight_g: 380, temp: 30, rh: 67 },
-    { ts: Date.now() - 10 * 60 * 1000,  time: "14:10", weight_g: 357, temp: 30, rh: 67 },
-    { ts: Date.now() - 5 * 60 * 1000,   time: "14:15", weight_g: 357, temp: 30, rh: 67 },
-    { ts: Date.now(),                   time: "14:20", weight_g: 312.4, temp: 30, rh: 67 },
-  ],
+  // จุดละ 5 นาที: น้ำหนักนิ่ง 3 จุดต่อช่วง แล้วลดลง = ดื่ม (dashboard คำนวณ ml จากน้ำหนักที่หายไปเอง)
+  history: mockWeightSeries([[480, 3], [435, 3], [390, 3], [345, 3], [312.4, 3]]),
 };
 
 // ============================================================================
@@ -549,16 +549,81 @@ const clock = (ts, withSec = false) =>
 const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
 const sumMl = (rows) => Math.round(rows.reduce((s, d) => s + (d.ml || 0), 0));
 
+// ตรวจจับการดื่มจากน้ำหนักที่หายไป (พอร์ตจาก gateway/drink_detect.h ใช้ตัวเลขชุดเดียวกัน)
+//   น้ำหนักนิ่งใหม่ ต่ำกว่าน้ำหนักนิ่งก่อนหน้า >= drinkMinG → ดื่มไป (ก่อน - หลัง) ml  (น้ำ 1 g ≈ 1 ml)
+const DRINK_CFG = { cupMinG: 40, stableG: 5, stableCount: 2, drinkMinG: 15, drinkMaxG: 600, refillMinG: 30 };
+
+function detectDrinks(rows, cfg = DRINK_CFG) {
+  const out = [];
+  let present = false, run = 0, last = NaN, ref = NaN, total = 0, day = null;
+  for (const r of rows) {
+    const w = r.weight_g;
+    if (typeof w !== "number" || Number.isNaN(w)) continue;
+    const d0 = startOfDay(r.ts);
+    if (d0 !== day) { day = d0; total = 0; }
+    if (w < cfg.cupMinG) { present = false; run = 0; last = w; continue; }   // ยกแก้ว ไม่นับ
+    if (!present) { present = true; run = 0; last = NaN; }
+    if (!Number.isNaN(last) && Math.abs(w - last) <= cfg.stableG) run++; else run = 0;
+    const prev = last; last = w;
+    if (run < cfg.stableCount) continue;                                       // ยังไม่นิ่ง
+    const level = (w + prev) / 2;
+    if (Number.isNaN(ref)) { ref = level; continue; }
+    const d = ref - level;
+    if (d >= cfg.drinkMinG && d <= cfg.drinkMaxG) {
+      total += d;
+      out.push({ ts: r.ts, ml: d, w_from: ref, w_to: level, ml_today: total });
+      ref = level;
+    } else if (d > cfg.drinkMaxG || -d >= cfg.refillMinG || Math.abs(d) < cfg.stableG) {
+      ref = level;                                                             // เปลี่ยนแก้ว / เติมน้ำ / ค่าเลื่อนช้า
+    }
+  }
+  return out;
+}
+
+function buildMockView() {
+  const rows = MOCK_DATA.history;
+  const now = Date.now();
+  return {
+    ...MOCK_DATA,
+    ts: now,
+    weight_g: rows[rows.length - 1].weight_g,
+    ...drinkStats(detectDrinks(rows), now),
+  };
+}
+
+// สรุปจากรายการดื่ม (ใช้ทั้ง mock และ Firebase)
+function drinkStats(drinks, now = Date.now()) {
+  const last = drinks.length ? drinks[drinks.length - 1] : null;
+  const today0 = startOfDay(now);
+  return {
+    daily_ml: sumMl(drinks.filter((d) => d.ts >= today0)),
+    hourly_rate: sumMl(drinks.filter((d) => d.ts >= now - 60 * 60 * 1000)),
+    last_sip_ts: last ? last.ts : null,
+    last_sip_ml: last ? Math.round(last.ml) : null,
+    sips: drinks.slice(-6).reverse().map(sipRow),
+  };
+}
+
+function sipRow(d) {
+  return {
+    time: clock(d.ts),
+    ml: Math.round(d.ml),
+    note: typeof d.w_from === "number" && typeof d.w_to === "number"
+      ? `${Math.round(d.w_from)} g → ${Math.round(d.w_to)} g`
+      : `Today ${Math.round(d.ml_today ?? 0).toLocaleString()} ml`,
+  };
+}
+
 function runMock(reason) {
   isMockMode = true;
   $("status").textContent = `MOCK DATA MODE (${reason})`;
-  updateAll(MOCK_DATA, MOCK_DATA.history);
+  updateAll(buildMockView(), MOCK_DATA.history);
 }
 
 function toView(latest, drinks) {
   const now = Date.now();
   const today0 = startOfDay(now);
-  const last = drinks.length ? drinks[drinks.length - 1] : null;
+  const stats = drinkStats(drinks, now);
   const week = [];
   for (let i = 7; i >= 1; i--) {
     const from = today0 - i * DAY_MS;
@@ -568,17 +633,13 @@ function toView(latest, drinks) {
   return {
     ...latest,
     daily_ml: Math.round(latest.ml_today ?? 0),
-    hourly_rate: sumMl(drinks.filter((d) => d.ts >= now - 60 * 60 * 1000)),
-    last_sip_ts: last ? last.ts : null,
-    last_sip_ml: last ? Math.round(last.ml) : null,
+    hourly_rate: stats.hourly_rate,
+    last_sip_ts: stats.last_sip_ts,
+    last_sip_ml: stats.last_sip_ml,
     ai_risk: typeof p !== "number" ? null : p >= AI_P_UP ? "high" : p > AI_P_DOWN ? "moderate" : "normal",
     alert_state: latest.estop ? "estop" : latest.line_sent ? "line_sent" : latest.sign_up ? "servo_up" : "idle",
     week_ml: drinks.length ? week : [],
-    sips: drinks.slice(-6).reverse().map((d) => ({
-      time: clock(d.ts),
-      ml: Math.round(d.ml),
-      note: `Today ${Math.round(d.ml_today ?? 0).toLocaleString()} ml`,
-    })),
+    sips: stats.sips,
   };
 }
 
