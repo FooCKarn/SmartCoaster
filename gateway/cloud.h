@@ -67,6 +67,9 @@ int fbRequest(const char *method, const String &path, const String &body) {
     Serial.printf("[CLOUD] %s %s -> %d\n", method, path.c_str(), code);
   } else {
     fbOk++;
+#if defined(VIDEO_MODE) && VIDEO_MODE
+    Serial.printf("[CLOUD] OK %s %s -> Firebase\n", method, path.c_str());
+#endif
   }
   return code;
 }
