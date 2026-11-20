@@ -321,6 +321,7 @@ void restoreDrinkStateLocked(const struct tm &now) {
 }
 
 void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
+  const bool signWasUp = S.signUp;
   if (ev == EV_DRINK) {
     S.hist[S.histHead].ms = millis();
     S.hist[S.histHead].ml = amount;
@@ -332,6 +333,13 @@ void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
     setSignLocked(false, "ดื่มแล้ว");
     saveDrinkStateLocked();
   }
+  if (ev == EV_CUP_BACK && S.signUp) {
+    // ยกแก้วขึ้นแล้ววางกลับขณะธงยกอยู่ (น้ำลดไม่ถึงเกณฑ์) ถือว่าดื่มแล้ว: ลดธง นับเวลาดื่มล่าสุดใหม่ และพักธง (ไม่มียอด ml)
+    S.lastDrinkMs = millis();
+    S.holdUntilMs = millis() + scaledMinToMs(HOLD_DOWN_MIN);
+    setSignLocked(false, "ยกแก้ววางกลับ");
+    saveDrinkStateLocked();
+  }
   if (ev == EV_CUP_LIFTED) S.cupAwaySinceMs = millis() | 1;
   if (ev == EV_CUP_PLACED) S.cupAwaySinceMs = 0;
   switch (ev) {
@@ -339,6 +347,7 @@ void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
     case EV_REFILL:      Serial.printf("[DRINK] เติมน้ำ +%.0f g\n", amount); break;
     case EV_CUP_PLACED:  Serial.printf("[DRINK] วางแก้ว w=%.0f g (รอนิ่ง ~10 วิ แล้วค่อยเทียบ)\n", m.weight_g); break;
     case EV_CUP_LIFTED:  Serial.println("[DRINK] ยกแก้วขึ้น (ยังไม่นับ รอวางกลับ)"); break;
+    case EV_CUP_BACK:    Serial.printf("[DRINK] ยกแก้ววางกลับ น้ำลดไม่ถึงเกณฑ์ (%s)\n", signWasUp ? "ลดธงแล้ว" : "ธงไม่ได้ยกอยู่ ไม่ทำอะไร"); break;
     case EV_CUP_CHANGED: Serial.printf("[DRINK] เปลี่ยนแก้ว จำน้ำหนักใหม่ %.0f g\n", S.drink.refWeight()); break;
     default: break;
   }
@@ -568,7 +577,25 @@ void runAIOnce(bool print) {
     ni.minsSignUp = S.signUp ? minsSince(S.signUpSinceMs) : 0;
     ni.mlLastHour = S.aiX[1];  ni.mlToday = S.mlToday;  ni.roomT = S.roomT;
     ni.dayId = S.todayYday;
-    LineLevel lv = S.ln.decide(ni, nowMin());
+    // แจ้ง LINE ทันทีตอนที่ AI/กฎตายตัวเพิ่งยกธง (ข้อความสั้น 1-2 บรรทัด บอกเหตุผลของ AI)
+    // ยกด้วยมือ (Serial 'u') ไม่แจ้ง เพราะ wasUp จะเป็น true ในรอบถัดไป ไม่ใช่การยกในรอบนี้
+    LineLevel lv = LN_NONE;
+    if (S.signUp && !wasUp && S.ln.decideRaise(ni, nowMin())) {
+      float c[AI_N_FEATURES];
+      for (int i = 0; i < AI_N_FEATURES; i++) c[i] = AI_W[i] * (S.aiX[i] - AI_MEAN[i]) / AI_STD[i];
+      LineRaiseInput ri;
+      ri.p = S.aiP;  ri.minsSinceDrink = ni.minsSinceDrink;
+      ri.overdue = overdue;  ri.overdueMin = MAX_NO_DRINK_MIN;
+      ri.x = S.aiX;  ri.c = c;
+      lineBuildRaiseText(lm.text, sizeof(lm.text), ri);
+      lm.autoAlert = true;
+      lm.drinkStamp = S.lastDrinkMs;
+      S.ln.markRaiseQueued(nowMin());
+      sendLine = true;
+      Serial.printf("[LINE] สร้างข้อความ RAISE (ยกธง)  p=%.2f\n", S.aiP);
+    } else {
+      lv = S.ln.decide(ni, nowMin());
+    }
     if (lv != LN_NONE) {
       lineBuildText(lm.text, sizeof(lm.text), lv, ni, S.ln.sentInEpisode());
       lm.autoAlert = true;

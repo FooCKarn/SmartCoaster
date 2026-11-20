@@ -10,6 +10,9 @@
 //   - ระดับ URGENT เมื่อไม่ได้ดื่มนานมาก หรือ AI ประเมินความเสี่ยงสูงมาก  ไม่งั้น GENTLE
 //   - นับโควตา/คูลดาวน์เฉพาะข้อความที่ "ส่งสำเร็จ"  ส่งพลาด → ลองใหม่ได้ แต่ไม่เกิน maxRetry ครั้ง
 //   - ระหว่างรอส่ง (pending) ไม่สร้างข้อความซ้ำ
+//   - แจ้งทันทีตอนยกธง (decideRaise): ข้อความสั้น 1-2 บรรทัดบอกเหตุผลของ AI ส่งครั้งเดียวต่อการยก 1 ครั้ง
+//     นับรวมในเพดานต่อวัน แต่ไม่กระทบจังหวะ "เตือนหลังยกค้าง firstAfterMin" ด้านบน
+//     ห่างจากข้อความแจ้งทันทีครั้งก่อนอย่างน้อย minGapMin (กันป้ายยกลงสลับแล้วข้อความรัว)
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
@@ -43,15 +46,37 @@ struct LineNotifyInput {
   int   dayId = -1;            // เปลี่ยนเมื่อขึ้นวันใหม่ (tm_yday) -1 = ยังไม่รู้เวลา
 };
 
+// ข้อมูลสำหรับข้อความ "ยกธงทันที": เหตุผลของ AI
+// x[] และ c[] เรียงตาม feature ของโมเดล (ai_model.h): 0 mins_since_drink, 1 ml_last_hour, 2 ml_today,
+//   3 room_t, 4 room_rh, 5 present, 6 sound_p2p
+// c[i] = ส่วนที่ feature นั้นดันความเสี่ยง (+ = ดันให้ยกธง) = W[i] * (x[i] - mean[i]) / std[i]
+struct LineRaiseInput {
+  float p = NAN;                 // ความเสี่ยงจาก AI 0..1
+  float minsSinceDrink = 0;
+  bool  overdue = false;         // ยกเพราะกฎตายตัว "ไม่ได้ดื่มนานเกินกำหนด" (ไม่ใช่ AI)
+  float overdueMin = 90;
+  const float *x = nullptr;
+  const float *c = nullptr;
+};
+
 class LineNotifier {
  public:
   LineNotifyConfig cfg;
 
+  // เพิ่งยกธงในรอบนี้ → ควรแจ้งทันทีไหม (true = ให้สร้างข้อความแล้วเรียก markRaiseQueued)
+  bool decideRaise(const LineNotifyInput &in, float nowMin) {
+    rollDay(in);
+    if (!in.signUp || in.quiet) return false;
+    if (pending_) return false;
+    if (sentToday_ >= cfg.maxPerDay) return false;
+    if (hasRaised_ && nowMin - lastRaiseMin_ < cfg.minGapMin) return false;
+    return true;
+  }
+  void markRaiseQueued(float nowMin) { pending_ = true; pendingRaise_ = true; lastTryMin_ = nowMin; }
+
   // คืนระดับที่ควรส่งตอนนี้ (LN_NONE = ยังไม่ต้องส่ง)
   LineLevel decide(const LineNotifyInput &in, float nowMin) {
-    if (in.dayId != -1 && in.dayId != day_) {          // วันใหม่ → รีเซ็ตยอดนับ
-      day_ = in.dayId; sentToday_ = 0;
-    }
+    rollDay(in);
     if (!in.signUp || in.quiet) {                      // ดื่มแล้ว / ป้ายลง / กลางคืน → จบรอบเตือนนี้
       sentInEpisode_ = 0; failCount_ = 0;
       return LN_NONE;
@@ -75,6 +100,12 @@ class LineNotifier {
   // netTask รายงานผลหลังส่ง
   void onResult(bool ok, float nowMin) {
     pending_ = false;
+    if (pendingRaise_) {                               // ข้อความแจ้งทันทีตอนยกธง: ไม่ลองใหม่ (ไม่กระทบรอบเตือนปกติ)
+      pendingRaise_ = false;
+      hasRaised_ = true; lastRaiseMin_ = nowMin;
+      if (ok) sentToday_++;
+      return;
+    }
     if (ok) {
       sentInEpisode_++; sentToday_++; hasSent_ = true; lastSentMin_ = nowMin; failCount_ = 0;
     } else if (++failCount_ >= cfg.maxRetry) {         // ลองครบแล้ว เว้นช่วงไปก่อน (ไม่นับโควตา)
@@ -82,16 +113,24 @@ class LineNotifier {
     }
   }
   // ข้อความค้างคิวแต่ผู้ใช้ดื่มไปแล้ว / ป้ายลงแล้ว → ยกเลิก ไม่นับ ไม่ส่ง
-  void onCancel() { pending_ = false; failCount_ = 0; }
+  void onCancel() {
+    if (pendingRaise_) { pendingRaise_ = false; pending_ = false; return; }
+    pending_ = false; failCount_ = 0;
+  }
 
   int  sentToday() const { return sentToday_; }
   int  sentInEpisode() const { return sentInEpisode_; }
   bool pending() const { return pending_; }
 
  private:
-  bool  pending_ = false, hasSent_ = false;
+  void rollDay(const LineNotifyInput &in) {
+    if (in.dayId != -1 && in.dayId != day_) {          // วันใหม่ → รีเซ็ตยอดนับ
+      day_ = in.dayId; sentToday_ = 0;
+    }
+  }
+  bool  pending_ = false, hasSent_ = false, pendingRaise_ = false, hasRaised_ = false;
   int   sentInEpisode_ = 0, sentToday_ = 0, failCount_ = 0, day_ = -1;
-  float lastSentMin_ = 0, lastTryMin_ = 0;
+  float lastSentMin_ = 0, lastTryMin_ = 0, lastRaiseMin_ = 0;
 };
 
 // ปริมาณที่แนะนำให้ดื่มตอนนี้ (ml ปัดเป็นสิบ) = ที่ควรดื่มต่อชม. − ที่ดื่มไปแล้วใน 1 ชม. จำกัด 80–250
@@ -132,4 +171,50 @@ static inline void lineBuildText(char *out, size_t n, LineLevel lv, const LineNo
   }
   if (!isnan(in.roomT) && in.roomT >= 29.0f) LN_APPEND("\n อุณหภูมิห้องสูง %.0f°C ควรดื่มน้ำเพิ่ม", in.roomT);
   if (pct >= 0)                              LN_APPEND("\n AI ประเมินเสี่ยงดื่มน้ำน้อย %d%%", pct);
+}
+
+// ข้อความตอนยกธง: สั้น 1-2 บรรทัด บอกว่า "ทำไมถึงยก" (feature ที่ดันความเสี่ยงมากที่สุด 2 อันดับแรก)
+// บรรทัด 1 = ยกธงแล้ว (+ AI เสี่ยงกี่ %)   บรรทัด 2 = เพราะอะไร
+static inline void lineBuildRaiseText(char *out, size_t n, const LineRaiseInput &in) {
+  int pct = isnan(in.p) ? -1 : (int)lroundf(in.p * 100.0f);
+  size_t len = 0;
+  out[0] = 0;
+  if (in.overdue) {
+    LN_APPEND("🚩 ยกธงแล้ว: ไม่ได้ดื่มน้ำมา %.0f นาที (เกิน %.0f นาที)", in.minsSinceDrink, in.overdueMin);
+    if (pct >= 0) LN_APPEND("\nAI ประเมินเสี่ยงดื่มน้ำน้อย %d%%", pct);
+    return;
+  }
+  if (pct >= 0) LN_APPEND("🚩 ยกธงเตือนให้ดื่มน้ำ · AI ประเมินเสี่ยง %d%%", pct);
+  else          LN_APPEND("🚩 ยกธงเตือนให้ดื่มน้ำ");
+
+  // เลือก feature ที่ดันขึ้นมากสุด 2 ตัว (เฉพาะที่ดัน > 0.1)
+  int top[2] = {-1, -1};
+  if (in.c) {
+    for (int k = 0; k < 2; k++) {
+      float best = 0.1f;
+      for (int i = 0; i < 7; i++) {
+        if (i == top[0]) continue;
+        if (in.c[i] > best) { best = in.c[i]; top[k] = i; }
+      }
+    }
+  }
+  char why[160]; size_t wl = 0; why[0] = 0;
+  for (int k = 0; k < 2 && top[k] >= 0; k++) {
+    float v = in.x ? in.x[top[k]] : 0;
+    const char *sep = wl ? ", " : "";
+    int r = -1;
+    switch (top[k]) {
+      case 0: r = snprintf(why + wl, sizeof(why) - wl, "%sไม่ได้ดื่มมา %.0f นาที", sep, v); break;
+      case 1: r = snprintf(why + wl, sizeof(why) - wl, "%sชม.ที่ผ่านมาดื่มแค่ %.0f ml", sep, v); break;
+      case 2: r = snprintf(why + wl, sizeof(why) - wl, "%sวันนี้ดื่มแค่ %.0f ml", sep, v); break;
+      case 3: r = snprintf(why + wl, sizeof(why) - wl, "%sห้องร้อน %.0f°C", sep, v); break;
+      case 4: r = snprintf(why + wl, sizeof(why) - wl, "%sอากาศแห้ง (ชื้น %.0f%%)", sep, v); break;
+      case 5: r = snprintf(why + wl, sizeof(why) - wl, "%sไม่เห็นคนอยู่หน้าโต๊ะ", sep); break;
+      case 6: r = snprintf(why + wl, sizeof(why) - wl, "%sห้องเสียงดัง (มักลืมดื่ม)", sep); break;
+    }
+    if (r < 0 || (size_t)r >= sizeof(why) - wl) { why[wl] = 0; break; }   // ใส่ไม่ครบ ข้ามทั้งส่วน
+    wl += r;
+  }
+  if (wl) LN_APPEND("\nเพราะ: %s", why);
+  else    LN_APPEND("\nเหตุผล: ความเสี่ยงโดยรวมสูงกว่าเกณฑ์");
 }

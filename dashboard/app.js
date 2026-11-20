@@ -731,33 +731,42 @@ const sumMl = (rows) => Math.round(rows.reduce((s, d) => s + (d.ml || 0), 0));
 
 // ตรวจจับการดื่มจากน้ำหนักที่หายไป (พอร์ตจาก gateway/drink_detect.h ใช้ตัวเลขชุดเดียวกัน)
 //   น้ำหนักนิ่งใหม่ ต่ำกว่าน้ำหนักนิ่งก่อนหน้า >= drinkMinG → ดื่มไป (ก่อน - หลัง) ml  (น้ำ 1 g ≈ 1 ml)
-const DRINK_CFG = { cupMinG: 40, stableG: 5, stableCount: 2, drinkMinG: 15, drinkMaxG: 600, refillMinG: 30 };
+const DRINK_CFG = { cupMinG: 40, stableG: 5, stableCount: 2, drinkMinG: 15, drinkMaxG: 600, refillMinG: 30, sipMinG: 5 };
 
 function detectDrinks(rows, cfg = DRINK_CFG) {
   const out = [], refills = [];
-  let present = false, run = 0, last = NaN, ref = NaN, total = 0, day = null;
+  let present = false, lifted = false, run = 0, last = NaN, ref = NaN, total = 0, day = null;
   for (const r of rows) {
     const w = r.weight_g;
     if (typeof w !== "number" || Number.isNaN(w)) continue;
     const d0 = startOfDay(r.ts);
     if (d0 !== day) { day = d0; total = 0; }
-    if (w < cfg.cupMinG) { present = false; run = 0; last = w; continue; }   // ยกแก้ว ไม่นับ
+    if (w < cfg.cupMinG) { if (present) lifted = true; present = false; run = 0; last = w; continue; }   // ยกแก้ว ไม่นับ (จำไว้ว่ายกแล้ว)
     if (!present) { present = true; run = 0; last = NaN; }
     if (!Number.isNaN(last) && Math.abs(w - last) <= cfg.stableG) run++; else run = 0;
     const prev = last; last = w;
     if (run < cfg.stableCount) continue;                                       // ยังไม่นิ่ง
     const level = (w + prev) / 2;
-    if (Number.isNaN(ref)) { ref = level; continue; }
+    if (Number.isNaN(ref)) { ref = level; lifted = false; continue; }
     const d = ref - level;
     if (d >= cfg.drinkMinG && d <= cfg.drinkMaxG) {
       total += d;
       out.push({ ts: r.ts, ml: d, w_from: ref, w_to: level, ml_today: total });
-      ref = level;
+      ref = level; lifted = false;
     } else if (-d >= cfg.refillMinG) {
       refills.push({ ts: r.ts, ml: -d, w_from: ref, w_to: level });            // น้ำหนักเพิ่ม = เติมน้ำ
-      ref = level;
-    } else if (d > cfg.drinkMaxG || Math.abs(d) < cfg.stableG) {
-      ref = level;                                                             // เปลี่ยนแก้ว / ค่าเลื่อนช้า
+      ref = level; lifted = false;
+    } else if (d > cfg.drinkMaxG) {
+      ref = level; lifted = false;                                             // เปลี่ยนแก้ว
+    } else if (lifted) {
+      lifted = false;                                                          // ยกแก้วขึ้นแล้ววางกลับ แต่น้ำลดไม่ถึง drinkMinG
+      if (d >= cfg.sipMinG) {                                                  // จิบเล็ก มีหลักฐานการยกแก้ว นับเลย
+        total += d;
+        out.push({ ts: r.ts, ml: d, w_from: ref, w_to: level, ml_today: total });
+        ref = level;
+      } else if (d <= 0) ref = level;                                          // ไม่ลด/เพิ่มนิดหน่อย ตั้งฐานใหม่
+    } else if (Math.abs(d) < cfg.stableG) {
+      ref = level;                                                             // ค่าเลื่อนช้า
     }
   }
   return { drinks: out, refills };
