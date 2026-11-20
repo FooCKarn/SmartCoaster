@@ -49,6 +49,7 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 #include <Preferences.h>
+#include <Wire.h>
 #include "../tests/t15_power_check/t15_power_check.ino"
 #else
 #error "Select a sketch using a PlatformIO environment in platformio.ini"
