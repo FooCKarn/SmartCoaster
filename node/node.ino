@@ -163,9 +163,33 @@ float readWeight() {
   return mockWeight + random(-20, 21) / 10.0f;   // ใส่ noise ±2 g ให้ดูเหมือนค่าจริง
 }
 #else
+// ===== จุดศูนย์ (tare) จำไว้ใน flash =====
+// เดิม tare ทุกครั้งที่บูต ถ้า node รีบูต (ไฟตก/ถอดปลั๊ก) ตอนแก้ววางอยู่ น้ำหนักแก้วจะกลายเป็น 0
+// ยกแก้วออกได้ค่าติดลบ gateway เลยมองว่า "ไม่มีแก้ว" ตลอด และไม่เห็นการดื่ม
+// ตอนนี้ tare ครั้งแรกครั้งเดียวแล้วจำ offset ไว้ บูตครั้งต่อไปใช้ค่าเดิม
+// ถ้าอ่านได้ติดลบชัด ๆ (< NEG_RETARE_G) ติดกัน 3 ครั้ง = จุดศูนย์ผิด (เคย tare ตอนมีแก้ว) → tare ใหม่เอง
+// tare ใหม่เองจาก Serial: พิมพ์ t (ยกแก้วออกก่อน)
+Preferences scalePrefs;
+const float NEG_RETARE_G = -40;
+int negCount = 0;
+
+void retare(const char *why) {
+  if (!scale.wait_ready_timeout(1000)) return;
+  scale.tare(20);
+  scalePrefs.putLong("offset", scale.get_offset());
+  negCount = 0;
+  Serial.printf("[SCALE] tare ใหม่ (%s) offset=%ld บันทึกแล้ว\n", why, (long)scale.get_offset());
+}
+
 float readWeight() {
   if (!scale.wait_ready_timeout(500)) return NAN;  // HX711 ไม่ตอบ ส่ง NaN แทนการค้าง
-  return scale.get_units(5);
+  float w = scale.get_units(5);
+  if (w < NEG_RETARE_G) {
+    if (++negCount >= 3) { retare("ค่าติดลบ แท่นว่างอยู่"); w = scale.get_units(5); }
+  } else {
+    negCount = 0;
+  }
+  return w;
 }
 #endif
 
@@ -250,8 +274,12 @@ void setup() {
   scale.begin(HX_DT, HX_SCK);
   scale.set_scale(CAL_FACTOR);
   delay(2000);
-  if (scale.wait_ready_timeout(2000)) scale.tare(20);
-  else Serial.println("HX711 not responding (เช็คสาย DT/SCK/VCC) -> weight = NaN");
+  scalePrefs.begin("scale", false);
+  if (!scale.wait_ready_timeout(2000)) Serial.println("HX711 not responding (เช็คสาย DT/SCK/VCC) -> weight = NaN");
+  else if (scalePrefs.isKey("offset")) {
+    scale.set_offset(scalePrefs.getLong("offset"));
+    Serial.printf("[SCALE] ใช้จุดศูนย์เดิมจาก flash offset=%ld (พิมพ์ t เพื่อ tare ใหม่)\n", (long)scale.get_offset());
+  } else retare("บูตครั้งแรก");
 #endif
 
   uint32_t radioDelay = lastResetBrownout ? RADIO_DELAY_AFTER_BROWNOUT_MS : RADIO_DELAY_MS;
@@ -328,7 +356,9 @@ void loop() {
   mockHandleSerial();
 #else
   while (Serial.available()) {
-    if (Serial.read() == 'c') { dbg.clear(); Serial.println("ล้างสถิติ debug แล้ว"); }
+    char c = Serial.read();
+    if (c == 'c') { dbg.clear(); Serial.println("ล้างสถิติ debug แล้ว"); }
+    if (c == 't') retare("สั่งจาก Serial");
   }
 #endif
   debugSave();
