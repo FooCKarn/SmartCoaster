@@ -6,35 +6,71 @@
 // วัดแรงดันจากตัวแบ่ง 2 ตัว (10k/10k หรือ 100k/100k) ที่ขา D34 ตามวงจร node เดิม
 //   ต่อปลายบนของตัวแบ่งที่ "ขั้วบวกแบต"     → วัด VBAT (ค่าปกติ 3.6-4.2 V)
 //   หรือย้ายไปที่ "ขาออก + ของ MT3608"   → วัดไฟ 5V (ค่าปกติ 4.8-5.1 V)
-// ไม่ได้ต่อตัวแบ่งก็รันได้ จะรู้แค่ว่าตายขั้นไหน (แรงดันขึ้น 0)
+// ไม่ได้ต่อตัวแบ่งก็รันได้ จะรู้แค่ว่าตายขั้นไหน (แรงดันขึ้น 0 หรือค่าลอยๆ ต่ำกว่า 1000 mV)
 //
-// LED สีฟ้ากะพริบ = เลขขั้นปัจจุบัน (1-6 ครั้ง) ทุก 5 วิ, ผ่านครบทุกขั้น = ติดค้าง
+// ถ้ามี INA219 (บัดกรีขาแล้ว) จะวัด "กระแส" กับ "แรงดัน" จากแบตได้ด้วย ต่อแบบนี้:
+//   แบต+ (หรือ TP4056 OUT+) → INA219 VIN+   INA219 VIN- → MT3608 IN+
+//   INA219 VCC → 3V3 ของบอร์ด, GND → GND, SDA → D21, SCL → D22
+//   (กระแสทั้งหมดที่บอร์ดดึงจากแบตจะไหลผ่าน INA219)
+// หาไม่เจอ INA219 ก็รันต่อได้ แค่ไม่มีค่ากระแส
+//
+// LED สีฟ้ากะพริบ = เลขขั้นปัจจุบัน (1-9 ครั้ง) ทุก 5 วิ, ผ่านครบทุกขั้น = ติดค้าง
 // Serial: c = ล้าง log
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
 #include <Preferences.h>
+#include <Wire.h>
 
 const int LED = 2;
 const int VSENSE_PIN = 34;
 const float DIVIDER = 2.0f;
 const uint8_t WIFI_CHANNEL = 4;
 const uint32_t STEP_MS = 5000;
-const int NSTEP = 6;
+const int NSTEP = 9;
 const char *STEP_NAME[NSTEP + 1] = {
   "-",
   "1 CPU 80 MHz เฉยๆ (ไม่มีวิทยุ)",
   "2 CPU 240 MHz (ไม่มีวิทยุ)",
   "3 เปิด WiFi กำลังส่งต่ำสุด 2 dBm",
-  "4 ส่ง ESP-NOW รัว ที่ 8.5 dBm",
-  "5 ส่ง ESP-NOW รัว ที่ 13 dBm",
-  "6 ส่ง ESP-NOW รัว ที่ 20 dBm (เต็มกำลัง)",
+  "4 ส่งทีละ 1 แพ็กเก็ต/วิ ที่ 2 dBm",
+  "5 ส่ง ESP-NOW รัว ที่ 2 dBm",
+  "6 ส่งทีละ 1 แพ็กเก็ต/วิ ที่ 8.5 dBm",
+  "7 ส่ง ESP-NOW รัว ที่ 8.5 dBm",
+  "8 ส่ง ESP-NOW รัว ที่ 13 dBm",
+  "9 ส่ง ESP-NOW รัว ที่ 20 dBm (เต็มกำลัง)",
 };
 const uint8_t BCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+const uint8_t INA_ADDR = 0x40;            // A0/A1 ไม่ต่อ
+bool haveIna = false;
+uint32_t inaMinMv[NSTEP + 2], inaMaxMa[NSTEP + 2];
 
 Preferences log_;
 int step = 0;
 uint32_t minMv[NSTEP + 1], maxMv[NSTEP + 1];
+
+// อ่านรีจิสเตอร์ INA219 ตรงๆ (ใช้ค่าตั้งต้นของชิป: shunt 0.1 Ω วัดได้ถึง ~3.2 A)
+bool inaRead(uint8_t reg, uint16_t &val) {
+  Wire.beginTransmission(INA_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom((int)INA_ADDR, 2) != 2) return false;
+  val = (Wire.read() << 8) | Wire.read();
+  return true;
+}
+void inaSample() {
+  uint16_t raw;
+  if (inaRead(0x02, raw)) {                // bus voltage: LSB 4 mV
+    uint32_t mv = (raw >> 3) * 4;
+    if (mv < inaMinMv[step]) inaMinMv[step] = mv;
+  }
+  if (inaRead(0x01, raw)) {                // shunt voltage: LSB 10 uV / 0.1 Ω = 0.1 mA
+    int32_t ma = (int16_t)raw / 10;
+    if (ma < 0) ma = -ma;
+    if ((uint32_t)ma > inaMaxMa[step]) inaMaxMa[step] = ma;
+  }
+}
 
 uint32_t readMv() {                       // อ่านเร็ว (ไม่เฉลี่ย) เพื่อจับไฟตกสั้นๆ
   return analogReadMilliVolts(VSENSE_PIN) * DIVIDER;
@@ -57,8 +93,14 @@ void printPrevious(esp_reset_reason_t reason) {
   for (int s = 1; s <= reached && s <= NSTEP; s++) {
     char k1[8], k2[8];
     snprintf(k1, sizeof k1, "mn%d", s); snprintf(k2, sizeof k2, "mx%d", s);
-    Serial.printf("  ขั้น %-42s ต่ำสุด %4lu mV  สูงสุด %4lu mV\n", STEP_NAME[s],
+    Serial.printf("  ขั้น %-42s D34: ต่ำสุด %4lu mV  สูงสุด %4lu mV", STEP_NAME[s],
                   (unsigned long)log_.getUInt(k1, 0), (unsigned long)log_.getUInt(k2, 0));
+    char k3[8], k4[8];
+    snprintf(k3, sizeof k3, "bv%d", s); snprintf(k4, sizeof k4, "ia%d", s);
+    if (log_.getBool("ina", false))
+      Serial.printf("  | INA219: แบตต่ำสุด %4lu mV  กระแสสูงสุด %4lu mA",
+                    (unsigned long)log_.getUInt(k3, 0), (unsigned long)log_.getUInt(k4, 0));
+    Serial.println();
   }
   if (reached > 0) {
     if (done) Serial.println("=> ผ่านครบทุกขั้น ไฟพอ");
@@ -73,11 +115,18 @@ void saveStep() {
   snprintf(k1, sizeof k1, "mn%d", step); snprintf(k2, sizeof k2, "mx%d", step);
   log_.putUInt(k1, minMv[step] == UINT32_MAX ? 0 : minMv[step]);
   log_.putUInt(k2, maxMv[step]);
+  if (haveIna) {
+    char k3[8], k4[8];
+    snprintf(k3, sizeof k3, "bv%d", step); snprintf(k4, sizeof k4, "ia%d", step);
+    log_.putUInt(k3, inaMinMv[step] == UINT32_MAX ? 0 : inaMinMv[step]);
+    log_.putUInt(k4, inaMaxMa[step]);
+  }
 }
 
 void enterStep(int s) {
   step = s;
   minMv[s] = UINT32_MAX; maxMv[s] = 0;
+  inaMinMv[s] = UINT32_MAX; inaMaxMa[s] = 0;
   log_.putUChar("step", s);               // จดก่อนลงมือ ถ้าตายจะรู้ว่าขั้นนี้
   saveStep();
   Serial.printf("\n>> ขั้น %s\n", STEP_NAME[s]);
@@ -92,9 +141,10 @@ void enterStep(int s) {
       esp_now_init();
       { esp_now_peer_info_t p = {}; memcpy(p.peer_addr, BCAST, 6); p.channel = WIFI_CHANNEL; esp_now_add_peer(&p); }
       break;
-    case 4: esp_wifi_set_max_tx_power(34); break;
-    case 5: esp_wifi_set_max_tx_power(52); break;
-    case 6: esp_wifi_set_max_tx_power(80); break;
+    case 4: case 5: esp_wifi_set_max_tx_power(8); break;    // 2 dBm (ต่ำสุด)
+    case 6: case 7: esp_wifi_set_max_tx_power(34); break;   // 8.5 dBm (ค่าใน node ตอนนี้)
+    case 8: esp_wifi_set_max_tx_power(52); break;
+    case 9: esp_wifi_set_max_tx_power(80); break;
   }
   blinkN(s);
 }
@@ -122,6 +172,12 @@ void setup() {
     digitalWrite(LED, (millis() / 100) % 2);   // กะพริบรัวระหว่างรอ
   }
   digitalWrite(LED, LOW);
+  Wire.begin(21, 22);
+  Wire.setClock(400000);
+  Wire.beginTransmission(INA_ADDR);
+  haveIna = (Wire.endTransmission() == 0);
+  Serial.println(haveIna ? "เจอ INA219 จะวัดกระแส + แรงดันแบตด้วย" : "ไม่เจอ INA219 (วัดแค่ D34)");
+  log_.putBool("ina", haveIna);
   log_.putBool("done", false);
   enterStep(1);
 }
@@ -132,9 +188,14 @@ void loop() {
   uint32_t mv = readMv();
   if (mv < minMv[step]) minMv[step] = mv;
   if (mv > maxMv[step]) maxMv[step] = mv;
+  if (haveIna) inaSample();
 
-  if (step >= 4 && step <= NSTEP) {        // ส่งแพ็กเก็ตรัวๆ = จำลองโหลดตอนส่งจริง
-    static uint8_t payload[200];
+  static uint8_t payload[200];
+  static uint32_t lastSingle = 0;
+  if (step == 4 || step == 6) {            // ส่งทีละแพ็กเก็ต ห่างกัน 1 วิ (ใกล้เคียง node จริงที่ส่งทุก 5 วิ)
+    if (millis() - lastSingle >= 1000) { lastSingle = millis(); esp_now_send(BCAST, payload, 32); }
+    delay(2);
+  } else if (step >= 5) {                  // ส่งรัวๆ = โหลดหนักสุด
     esp_now_send(BCAST, payload, sizeof payload);
     delay(5);
   } else {
@@ -145,7 +206,10 @@ void loop() {
 
   if (step <= NSTEP && millis() - stepStart >= STEP_MS) {
     saveStep();
-    Serial.printf("   ต่ำสุด %lu mV  สูงสุด %lu mV\n", (unsigned long)minMv[step], (unsigned long)maxMv[step]);
+    Serial.printf("   D34 ต่ำสุด %lu mV  สูงสุด %lu mV", (unsigned long)minMv[step], (unsigned long)maxMv[step]);
+    if (haveIna) Serial.printf("  | แบตต่ำสุด %lu mV  กระแสสูงสุด %lu mA",
+                               (unsigned long)inaMinMv[step], (unsigned long)inaMaxMa[step]);
+    Serial.println();
     if (step == NSTEP) {
       log_.putBool("done", true);
       Serial.println("\nผ่านครบทุกขั้น ไฟพอ");
