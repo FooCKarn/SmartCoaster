@@ -162,8 +162,8 @@ const MOCK_DATA = {
     { time: "12:30", ml: 300, note: "With lunch" },
     { time: "11:10", ml: 150, note: "SG90 flag reminder" },
   ],
-  // จุดละ 5 นาที: น้ำหนักนิ่ง 3 จุดต่อช่วง แล้วลดลง = ดื่ม (dashboard คำนวณ ml จากน้ำหนักที่หายไปเอง)
-  history: mockWeightSeries([[480, 3], [435, 3], [390, 3], [345, 3], [312.4, 3]]),
+  // จุดละ 5 นาที: น้ำหนักนิ่ง 3 จุดต่อช่วง แล้วลดลง = ดื่ม, เพิ่มขึ้น = เติมน้ำ (dashboard คำนวณ ml จากน้ำหนักที่หายไปเอง)
+  history: mockWeightSeries([[480, 3], [435, 3], [390, 3], [345, 3], [560, 3], [515, 3]]),
 };
 
 // ============================================================================
@@ -425,9 +425,10 @@ function renderDashboardPage(v) {
     $("sipLogList").innerHTML = v.sips
       .map(
         (s) => `
-      <li class="sip-item">
+      <li class="sip-item${s.type === "refill" ? " is-refill" : ""}">
         <div>
           <span class="sip-time mono">${s.time}</span>
+          ${s.type === "refill" ? '<span class="sip-tag">Refill</span>' : ""}
           <span style="color:#64748b; margin-left:8px;">${s.note}</span>
         </div>
         <span class="sip-amount mono">+${s.ml} ml</span>
@@ -554,7 +555,7 @@ const sumMl = (rows) => Math.round(rows.reduce((s, d) => s + (d.ml || 0), 0));
 const DRINK_CFG = { cupMinG: 40, stableG: 5, stableCount: 2, drinkMinG: 15, drinkMaxG: 600, refillMinG: 30 };
 
 function detectDrinks(rows, cfg = DRINK_CFG) {
-  const out = [];
+  const out = [], refills = [];
   let present = false, run = 0, last = NaN, ref = NaN, total = 0, day = null;
   for (const r of rows) {
     const w = r.weight_g;
@@ -573,26 +574,30 @@ function detectDrinks(rows, cfg = DRINK_CFG) {
       total += d;
       out.push({ ts: r.ts, ml: d, w_from: ref, w_to: level, ml_today: total });
       ref = level;
-    } else if (d > cfg.drinkMaxG || -d >= cfg.refillMinG || Math.abs(d) < cfg.stableG) {
-      ref = level;                                                             // เปลี่ยนแก้ว / เติมน้ำ / ค่าเลื่อนช้า
+    } else if (-d >= cfg.refillMinG) {
+      refills.push({ ts: r.ts, ml: -d, w_from: ref, w_to: level });            // น้ำหนักเพิ่ม = เติมน้ำ
+      ref = level;
+    } else if (d > cfg.drinkMaxG || Math.abs(d) < cfg.stableG) {
+      ref = level;                                                             // เปลี่ยนแก้ว / ค่าเลื่อนช้า
     }
   }
-  return out;
+  return { drinks: out, refills };
 }
 
 function buildMockView() {
   const rows = MOCK_DATA.history;
   const now = Date.now();
+  const { drinks, refills } = detectDrinks(rows);
   return {
     ...MOCK_DATA,
     ts: now,
     weight_g: rows[rows.length - 1].weight_g,
-    ...drinkStats(detectDrinks(rows), now),
+    ...drinkStats(drinks, now, refills),
   };
 }
 
 // สรุปจากรายการดื่ม (ใช้ทั้ง mock และ Firebase)
-function drinkStats(drinks, now = Date.now()) {
+function drinkStats(drinks, now = Date.now(), refills = []) {
   const last = drinks.length ? drinks[drinks.length - 1] : null;
   const today0 = startOfDay(now);
   return {
@@ -600,12 +605,18 @@ function drinkStats(drinks, now = Date.now()) {
     hourly_rate: sumMl(drinks.filter((d) => d.ts >= now - 60 * 60 * 1000)),
     last_sip_ts: last ? last.ts : null,
     last_sip_ml: last ? Math.round(last.ml) : null,
-    sips: drinks.slice(-6).reverse().map(sipRow),
+    // Recent Drinks: รวมการดื่มกับการเติมน้ำ เรียงใหม่สุดก่อน
+    sips: [
+      ...drinks.map((d) => sipRow(d, "drink")),
+      ...refills.map((d) => sipRow(d, "refill")),
+    ].sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0)).slice(0, 6),
   };
 }
 
-function sipRow(d) {
+function sipRow(d, type = "drink") {
   return {
+    type,
+    ts: d.ts,
     time: clock(d.ts),
     ml: Math.round(d.ml),
     note: typeof d.w_from === "number" && typeof d.w_to === "number"
@@ -620,10 +631,10 @@ function runMock(reason) {
   updateAll(buildMockView(), MOCK_DATA.history);
 }
 
-function toView(latest, drinks) {
+function toView(latest, drinks, refills = []) {
   const now = Date.now();
   const today0 = startOfDay(now);
-  const stats = drinkStats(drinks, now);
+  const stats = drinkStats(drinks, now, refills);
   const week = [];
   for (let i = 7; i >= 1; i--) {
     const from = today0 - i * DAY_MS;
@@ -666,9 +677,10 @@ async function startLive() {
 
   let latest = null;
   let drinks = [];
+  let refills = [];
   let history = [];
   let unsubs = [];
-  const render = () => { if (latest) updateAll(toView(latest, drinks), history); };
+  const render = () => { if (latest) updateAll(toView(latest, drinks, refills), history); };
 
   const onErr = (err) => {
     lastTelemetryTs = null;
@@ -721,6 +733,13 @@ async function startLive() {
       unsubs.push(onValue(query(ref(db, "drinks"), orderByChild("ts"), startAt(since)), (snap) => {
         drinks = [];
         snap.forEach((c) => { drinks.push(c.val()); });
+        render();
+      }, onErr));
+
+      // การเติมน้ำ จาก /refills (แสดงรวมใน Recent Drinks)
+      unsubs.push(onValue(query(ref(db, "refills"), orderByChild("ts"), startAt(since)), (snap) => {
+        refills = [];
+        snap.forEach((c) => { refills.push(c.val()); });
         render();
       }, onErr));
     }
