@@ -35,7 +35,7 @@ const uint32_t SEND_EVERY_MS = 5000;
 // LED บนบอร์ด (GPIO2 สีน้ำเงิน) บอกสถานะ:
 //   เปิดเครื่อง        = กะพริบเร็ว 3 ครั้ง  (ถ้าเห็น 3 ครั้งซ้ำทุกไม่กี่วินาที = บอร์ดรีเซ็ตวน = ไฟตก)
 //   เปิดวิทยุผ่าน       = กะพริบช้า 2 ครั้ง
-//   ส่งแล้ว gateway ตอบ = กะพริบสั้น 1 ครั้งทุก 5 วิ
+//   ส่งแล้ว gateway ตอบ = กะพริบ 1 ครั้ง (0.15 วิ) ทุก 5 วิ
 //   ส่งไม่ถึง/ไม่มี ACK  = ติดค้าง 1 วิ ทุก 5 วิ
 // สถิติจดลง flash (NVS) แล้วเสียบ USB เปิด Serial Monitor ดูทีหลังได้ (พิมพ์ตอนบูต)
 const int      STATUS_LED   = 2;
@@ -198,6 +198,8 @@ void debugBoot() {
   uint32_t boots  = dbg.getUInt("boots", 0) + 1;
   uint32_t brown  = dbg.getUInt("brown", 0) + (reason == ESP_RST_BROWNOUT ? 1 : 0);
   uint32_t panics = dbg.getUInt("panic", 0) + (reason == ESP_RST_PANIC ? 1 : 0);
+  bool wdtReset = (reason == ESP_RST_TASK_WDT || reason == ESP_RST_INT_WDT || reason == ESP_RST_WDT);
+  uint32_t wdts   = dbg.getUInt("wdt", 0) + (wdtReset ? 1 : 0);
   Serial.println();
   Serial.println("===== node debug (สถิติจาก flash) =====");
   Serial.printf("รีเซ็ตครั้งนี้เพราะ: %s\n", resetText(reason));
@@ -205,12 +207,13 @@ void debugBoot() {
   Serial.printf("รอบก่อน: รันได้ %lu s, acked=%lu, ส่งไม่ถึง=%lu รอบ\n",
                 (unsigned long)dbg.getUInt("upS", 0), (unsigned long)dbg.getUInt("acked", 0),
                 (unsigned long)dbg.getUInt("noAck", 0));
-  Serial.printf("สะสม: บูต %lu ครั้ง, BROWNOUT %lu ครั้ง, PANIC %lu ครั้ง  (ส่ง c ใน Serial = ล้าง)\n",
-                (unsigned long)boots, (unsigned long)brown, (unsigned long)panics);
+  Serial.printf("สะสม: บูต %lu ครั้ง, BROWNOUT %lu ครั้ง, PANIC %lu ครั้ง, WATCHDOG %lu ครั้ง  (ส่ง c ใน Serial = ล้าง)\n",
+                (unsigned long)boots, (unsigned long)brown, (unsigned long)panics, (unsigned long)wdts);
   Serial.println("=======================================");
   dbg.putUInt("boots", boots);
   dbg.putUInt("brown", brown);
   dbg.putUInt("panic", panics);
+  dbg.putUInt("wdt", wdts);
   dbg.putUInt("upS", 0);
   dbg.putUInt("acked", 0);
   dbg.putUInt("noAck", 0);
@@ -275,6 +278,9 @@ void setup() {
   bootId = (uint16_t)esp_random();
   markStage(2);
   blink(2, 300, 200);                         // กะพริบช้า 2 ครั้ง = เปิดวิทยุผ่านแล้ว
+  // watchdog: ถ้า loop() ค้างเกิน ~5 วิ (เช่นไฟตกจนชิปเพี้ยนแต่ไม่รีเซ็ต) ให้รีเซ็ตตัวเองแล้วเริ่มใหม่
+  // บูตครั้งถัดไปจะขึ้นว่า "WATCHDOG (ค้าง)" ใน node debug
+  enableLoopWDT();
   Serial.printf("Node %d ready on channel %d (boot_id=%u)\n", NODE_ID, WIFI_CHANNEL, bootId);
 }
 
@@ -344,7 +350,7 @@ void loop() {
   flushQueue();
   if (seq == 1) markStage(3);
   if (ackedCount > ackedBefore) {
-    blink(1, 40, 0);                        // gateway ตอบแล้ว
+    blink(1, 150, 0);                       // gateway ตอบแล้ว
   } else {
     noAckRounds++;
     digitalWrite(STATUS_LED, HIGH); delay(1000); digitalWrite(STATUS_LED, LOW);  // ส่งไม่ถึง
