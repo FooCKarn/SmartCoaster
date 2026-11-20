@@ -9,6 +9,10 @@ let lastSensorPayload = null;
 let isMockMode = false;
 let currentNodeId = "coaster-01";
 let isDemoSpeed = false;
+// เวลาเครื่องคอมไม่ตรงกับเวลาจริง (ช้า/เร็วไปหลายสิบวิ) จะทำให้ขึ้น Offline ผิด ๆ
+// Firebase บอกได้ว่านาฬิกาเครื่องนี้ต่างจากเซิร์ฟเวอร์เท่าไร → ใช้ serverNow() แทน Date.now()
+let serverTimeOffsetMs = 0;
+const serverNow = () => Date.now() + serverTimeOffsetMs;
 
 
 function formatElapsed(ms) {
@@ -91,7 +95,7 @@ function updateDeviceOnlineStatus() {
     return;
   }
 
-  const ageMs = Date.now() - lastTelemetryTs;
+  const ageMs = serverNow() - lastTelemetryTs;
   const isOnline = ageMs <= OFFLINE_TIMEOUT_MS;
 
   if (isOnline) {
@@ -891,6 +895,11 @@ async function startLive() {
   });
   $("logout").addEventListener("click", (e) => { e.preventDefault(); signOut(auth); });
 
+  onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+    serverTimeOffsetMs = Number(snap.val()) || 0;
+    updateDeviceOnlineStatus();
+  });
+
   onAuthStateChanged(auth, (user) => {
     unsubs.forEach((u) => u());
     unsubs = [];
@@ -908,7 +917,7 @@ async function startLive() {
         return;
       }
       isMockMode = false;
-      lastTelemetryTs = latest.ts || Date.now();
+      lastTelemetryTs = latest.ts || serverNow();
       currentNodeId = latest.node_id || "coaster-01";
       isDemoSpeed = Boolean(latest.demo);
       updateDeviceOnlineStatus();

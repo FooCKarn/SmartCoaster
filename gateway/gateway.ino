@@ -431,7 +431,9 @@ void nodeTask(void *) {
     char suffix[16];
     snprintf(suffix, sizeof(suffix), "%u-%lu", m.node_id, (unsigned long)m.seq);
     strlcpy(up.path, "readings", sizeof(up.path));
-    up.latest = (m.queued == 0);          // ค่าล่าสุดจริง ๆ เท่านั้นที่ทับ /latest
+    // ทับ /latest เมื่อเป็นค่าสด: คิว node ว่าง หรือค่านี้วัดมาไม่เกิน 15 วิ
+    // (เดิมเช็กแค่ queued==0 ถ้า node มีค่าค้างคิวตลอด /latest จะไม่ขยับ → dashboard ขึ้น Offline)
+    up.latest = (m.queued == 0 || m.age_ms < 15000);
     stampItem(up, rec, m.age_ms, suffix);
     queueUpload(up, rec);
 
