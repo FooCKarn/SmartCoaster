@@ -66,40 +66,35 @@
     <button type="submit">Sign in</button>
   </form>
 
-  <!-- NODE board: coaster pad (HX711 load cell + HC-SR04) -->
-  <section class="board-section board-node" aria-labelledby="nodeTitle">
-    <header class="board-head">
-      <span class="board-pill">NODE</span>
-      <h2 class="board-title" id="nodeTitle">Coaster pad</h2>
-      <span class="board-sub">ESP32 node under the cup · HX711 load cell + HC-SR04 ultrasonic</span>
-    </header>
-    <div class="node-grid">
-      <div class="card sensor-chart-card">
-        <div class="card-header">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
-              <span class="node-tag">NODE</span>
-              <span class="sensor-badge is-offline" id="st-hx711"><i class="status-dot"></i><span>Offline</span></span>
-            </div>
-            <p class="card-desc">Today (00:00 – now) · Point at the chart and scroll the mouse wheel, drag it, or use the bar below</p>
+  <!-- Top Section: Load Cell chart (NODE) + sensor cards grouped by board -->
+  <section class="sensor-layout">
+    <div class="card sensor-chart-card">
+      <div class="card-header">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h2 class="card-title">Load Cell + HX711 (Weight Stream)</h2>
+            <span class="node-tag">NODE</span>
+            <span class="sensor-badge is-offline" id="st-hx711"><i class="status-dot"></i><span>Offline</span></span>
           </div>
+          <p class="card-desc">Today (00:00 – now) · Point at the chart and scroll the mouse wheel, drag it, or use the bar below</p>
+        </div>
 
-          <div class="chart-controls">
-            <span class="weight-badge mono" id="w">– g</span>
-          </div>
-        </div>
-        <div class="chart-wrap sensor-chart-wrap">
-          <canvas id="chartW"></canvas>
-        </div>
-        <div class="chart-scroll">
-          <div class="chart-scroll-track" id="weightScrollTrack" role="scrollbar" aria-orientation="horizontal" aria-controls="chartW" aria-label="Scroll weight chart through time" tabindex="0">
-            <div class="chart-scroll-thumb" id="weightScrollThumb"></div>
-          </div>
-          <span class="chart-scroll-range mono" id="weightScrollRange">–</span>
+        <div class="chart-controls">
+          <span class="weight-badge mono" id="w">– g</span>
         </div>
       </div>
+      <div class="chart-wrap sensor-chart-wrap">
+        <canvas id="chartW"></canvas>
+      </div>
+      <div class="chart-scroll">
+        <div class="chart-scroll-track" id="weightScrollTrack" role="scrollbar" aria-orientation="horizontal" aria-controls="chartW" aria-label="Scroll weight chart through time" tabindex="0">
+          <div class="chart-scroll-thumb" id="weightScrollThumb"></div>
+        </div>
+        <span class="chart-scroll-range mono" id="weightScrollRange">–</span>
+      </div>
+    </div>
 
+    <div class="sensor-grid">
       <div class="mini-card accent-red" id="card-hcsr04">
         <div class="mini-top">
           <small>ULTRASONIC · HC-SR04</small>
@@ -113,17 +108,8 @@
         </div>
         <span class="mini-foot" id="dDesc">–</span>
       </div>
-    </div>
-  </section>
 
-  <!-- GATEWAY board: sign box (DHT11, KY-038, PIR, ESP-NOW receiver) -->
-  <section class="board-section board-gateway" aria-labelledby="gatewayTitle">
-    <header class="board-head">
-      <span class="board-pill">GATEWAY</span>
-      <h2 class="board-title" id="gatewayTitle">Sign box</h2>
-      <span class="board-sub">ESP32 gateway · DHT11 + KY-038 sound + PIR + ESP-NOW receiver</span>
-    </header>
-    <div class="sensor-grid">
+      <hr class="grid-divider">
       <div class="mini-card accent-yellow" id="card-temp">
         <div class="mini-top">
           <small>TEMPERATURE · DHT11</small>
@@ -197,8 +183,11 @@
         <span class="mini-foot">Rising-edge interrupts on GPIO27 (no polling)</span>
       </div>
     </div>
+  </section>
 
-    <div class="card room-card">
+  <!-- Bottom Section: Room Environment Chart + Embedded Architecture Health -->
+  <section class="bottom-grid" style="margin-top: 20px;">
+    <div class="card">
       <div class="card-header">
         <div>
           <div class="title-row">
@@ -218,10 +207,7 @@
         <span class="chart-scroll-range mono" id="roomScrollRange">–</span>
       </div>
     </div>
-  </section>
 
-  <!-- Firmware status of both boards -->
-  <section class="board-section board-system">
     <div class="card">
       <div class="card-header">
         <div>
