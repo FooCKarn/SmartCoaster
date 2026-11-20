@@ -5,6 +5,19 @@
 //  sensorTask (DHT11, KY-038) ─┐       │                               └── lineQueue → LINE
 //  PIR / e-stop ISR ───────────┼─▶ state (mutex) ◀── aiTask ──servoQueue──▶ servoTask ──▶ SG90
 //
+// ===== โหมดอัดคลิป =====
+// VIDEO_MODE 1 = ตั้งค่าสำหรับอัดคลิป checkpoint/demo (เปลี่ยนเลขนี้ตัวเดียวแล้วอัปโหลด)
+//   - เร่งเวลา DEMO_SPEED 60 (1 วินาที = 1 นาที)  "ไม่ได้ดื่ม 60 นาที" = 60 วินาที → ยกธง + LINE เอง
+//   - อุ่นเครื่อง 30 วิ, ป้ายกันกระพือ 15 วิ, ยกแก้วค้างไม่เกิน 30 วิ (แทน 60 วิ / 60 วิ / 3 นาที)
+//   - LINE ได้ 50 ข้อความ/วัน (ซ้อมหลายรอบไม่ติดเพดาน)
+//   - Serial พิมพ์ [CLOUD] OK ทุกครั้งที่ส่งขึ้น Firebase สำเร็จ และ [STATUS] ทุก 30 วิ
+// อัดเสร็จแล้วเปลี่ยนกลับเป็น 0 แล้วอัปโหลดใหม่
+#ifndef VIDEO_MODE
+#define VIDEO_MODE 0
+#endif
+#if VIDEO_MODE && !defined(DEMO_SPEED)
+#define DEMO_SPEED 60
+#endif
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
@@ -26,6 +39,7 @@
 // Arduino IDE สร้าง prototype ของฟังก์ชันไว้บนสุดของไฟล์อัตโนมัติ
 // ต้องประกาศชื่อ struct ไว้ก่อน ไม่งั้น linkStatFor() จะ error ว่า LinkStat does not name a type
 struct LinkStat;
+void printStatus();
 
 const int DHT_PIN = 14, PIR_PIN = 27, SND_AO = 35, SND_DO = 32;
 const int SERVO_PIN = 18, STOP_BTN = 33, LED = 2;
@@ -43,7 +57,7 @@ const float    HOLD_DOWN_MIN  = 15;     // ดื่มแล้ว ป้าย
 const float    LINE_AFTER_MIN   = 10;   // ป้ายยกค้างกี่นาทีแล้วยังไม่ดื่ม → ส่ง LINE ครั้งแรก (นาที คูณ DEMO_SPEED)
 const float    LINE_REPEAT_MIN  = 30;   // ยังไม่ดื่ม → เตือนซ้ำห่างกันกี่นาที
 const float    LINE_MIN_GAP_MIN = 20;   // ทุกข้อความห่างกันอย่างน้อย (กันโควตาหมด)
-const int      LINE_MAX_PER_DAY = 6;    // เพดานข้อความอัตโนมัติต่อวัน
+const int      LINE_MAX_PER_DAY = VIDEO_MODE ? 50 : 6;    // เพดานข้อความอัตโนมัติต่อวัน
 // ส่งหาใคร: ตั้ง LINE_USER_ID ใน secrets.h (LINE Developers → Messaging API → "Your user ID") = ส่งเฉพาะเจ้าของ (push)
 // ถ้าไม่ตั้ง จะ broadcast หาเพื่อนทุกคนของ Official Account เหมือนเดิม
 #ifndef LINE_USER_ID
@@ -68,15 +82,15 @@ const uint32_t AI_EVERY_MS = 10000;     // คำนวณ AI ทุก 10 ว�
 // อุ่นเครื่องหลังบูต: ช่วงนี้ AI คำนวณได้แต่ห้ามยกป้าย
 // เพราะยังไม่มีข้อมูลจาก node / PIR ยังไม่นิ่ง → AI จะเข้าใจว่า "ไม่มีคน" (present=0) แล้วยกป้ายทันทีหลังอัปโค้ด
 // เวลาจริง ไม่คูณ DEMO_SPEED (PIR ส่วนใหญ่ต้องอุ่นเครื่อง ~30–60 วินาที)
-const uint32_t AI_WARMUP_MS = 60000;
+const uint32_t AI_WARMUP_MS = VIDEO_MODE ? 30000 : 60000;
 
 // ===== กติกาสำหรับใช้งานจริง (ดู docs/real-world-cases.md) =====
 // ทุกค่าเป็นเวลาจริง ยกเว้นที่เขียนว่า "นาที (คูณ DEMO_SPEED)"
 const bool     REQUIRE_PRESENT   = true;    // ยกป้ายเฉพาะตอนมีคนอยู่หน้าแก้ว (ไม่มีคนเห็น ยกไปก็เปล่า)
-const float    MAX_NO_DRINK_MIN  = 90;      // นาที (คูณ DEMO_SPEED) ไม่ได้ดื่มนานเท่านี้ ยกป้ายเลยไม่ต้องรอ AI
+const float    MAX_NO_DRINK_MIN  = VIDEO_MODE ? 60 : 90;      // นาที (คูณ DEMO_SPEED) ไม่ได้ดื่มนานเท่านี้ ยกป้ายเลยไม่ต้องรอ AI
 const uint32_t NODE_STALE_MS     = 60000;   // node เงียบเกินนี้ = ออฟไลน์/แบตหมด → ไม่รู้ว่าดื่มหรือยัง ห้ามยกป้ายใหม่
-const uint32_t CUP_AWAY_GRACE_MS = 180000;  // ยกแก้วออกไม่เกิน 3 นาที = น่าจะกำลังดื่ม ห้ามยกป้าย
-const uint32_t MIN_DWELL_MS      = 60000;   // ป้ายต้องค้างอย่างน้อย 1 นาทีก่อน AI จะเปลี่ยนอีก (กันกระพือ) การดื่มไม่ต้องรอ
+const uint32_t CUP_AWAY_GRACE_MS = VIDEO_MODE ? 30000 : 180000;  // ยกแก้วออกไม่เกิน 3 นาที = น่าจะกำลังดื่ม ห้ามยกป้าย
+const uint32_t MIN_DWELL_MS      = VIDEO_MODE ? 15000 : 60000;   // ป้ายต้องค้างอย่างน้อย 1 นาทีก่อน AI จะเปลี่ยนอีก (กันกระพือ) การดื่มไม่ต้องรอ
 // ช่วงเวลาเงียบ (ชั่วโมงไทย): ไม่ยกป้าย ไม่ส่ง LINE และลดป้ายลง  ตั้ง START == END เพื่อปิด
 // ตอน DEMO_SPEED != 1 (ถ่ายวิดีโอ) จะไม่ใช้ช่วงเวลาเงียบ
 const int      QUIET_START_H     = 22;
@@ -615,6 +629,10 @@ void aiTask(void *) {
   TickType_t wake = xTaskGetTickCount();
   for (;;) {
     runAIOnce(true);
+#if VIDEO_MODE
+    static uint8_t n = 0;
+    if (++n % 3 == 0) printStatus();   // [STATUS] ทุก 30 วิ ให้เห็น rx / fbOk เพิ่มบนจอโดยไม่ต้องพิมพ์ s
+#endif
     vTaskDelayUntil(&wake, pdMS_TO_TICKS(AI_EVERY_MS));
   }
 }
@@ -762,7 +780,7 @@ void setup() {
   xTaskCreate(aiTask,     "ai",     6144,  nullptr, 2, nullptr);
   xTaskCreate(netTask,    "net",    12288, nullptr, 1, nullptr);   // HTTPS/TLS ใช้ stack เยอะ
 
-  Serial.printf("Gateway ready  (AI model: %s, DEMO_SPEED=%d)\n", AI_TRAINED_ON, DEMO_SPEED);
+  Serial.printf("Gateway ready  (AI model: %s, DEMO_SPEED=%d, VIDEO_MODE=%d)\n", AI_TRAINED_ON, DEMO_SPEED, VIDEO_MODE);
   Serial.println("Serial: a=ดูค่า AI  w=AI อธิบายว่าทำไมยก/ไม่ยก  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  l=สถานะ LINE  q=โควตา LINE");
 }
 
