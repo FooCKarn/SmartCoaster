@@ -3,11 +3,12 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <time.h>
 
 // Send a JSON POST to a LINE Messaging API endpoint and return its HTTP code.
 inline int lineSend(const char* url, const char* token, const String& body,
                     String* resp = nullptr) {
-  if (WiFi.status() != WL_CONNECTED) return -1;
+  if (WiFi.status() != WL_CONNECTED) { Serial.println("[LINE] ส่งไม่ได้: WiFi ไม่ได้ต่อ"); return -1; }
   WiFiClientSecure client;
 #ifdef SC_ROOT_CA
   client.setCACert(SC_ROOT_CA);   // E5: ตรวจ cert (gateway/root_ca.h)
@@ -22,6 +23,15 @@ inline int lineSend(const char* url, const char* token, const String& body,
   http.addHeader("Authorization", String("Bearer ") + token);
   int code = http.POST(body);
   if (resp && code > 0) *resp = http.getString();
+  if (code < 0) {
+    // บอกสาเหตุให้ชัด: ต่อไม่ติด / TLS (cert, เวลา) / timeout
+    char tls[120] = "";
+    int tlsErr = client.lastError(tls, sizeof(tls));
+    Serial.printf("[LINE] ส่งไม่ได้: %s", HTTPClient::errorToString(code).c_str());
+    if (tlsErr) Serial.printf("  TLS: %s (%d)", tls, tlsErr);
+    Serial.printf("  heap=%lu  time=%s\n", (unsigned long)ESP.getFreeHeap(),
+                  time(nullptr) > 1700000000 ? "ok" : "ยังไม่ได้ NTP");
+  }
   http.end();
   return code;
 }
