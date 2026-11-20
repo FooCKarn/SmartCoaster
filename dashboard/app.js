@@ -377,6 +377,9 @@ if (currentPage === "sensors" && hasChart) {
         },
         plugins: {
           legend: { display: false },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y)}` },
+          },
           zoom: {
             pan: {
               enabled: true,
@@ -395,6 +398,7 @@ if (currentPage === "sensors" && hasChart) {
           },
           y: {
             grid: { color: "#f1f5f9" },
+            ticks: { precision: 0 }, // แกนน้ำหนักเป็นจำนวนเต็ม (g)
           },
         },
       },
@@ -617,7 +621,8 @@ function renderWeightChart(rows) {
   }
 
   chartW.data.labels = todayRows.map((r) => r.time);
-  chartW.data.datasets[0].data = todayRows.map((r) => r.weight_g);
+  // แสดงเป็นกรัมเต็มหน่วย: ความต่างไม่ถึง 1 g ไม่ต้องโชว์ละเอียด
+  chartW.data.datasets[0].data = todayRows.map((r) => (Number.isFinite(r.weight_g) ? Math.round(r.weight_g) : r.weight_g));
   chartW.data.datasets[0].pointRadius = todayRows.length > 80 ? 0 : 3;
   if (weightScroller) weightScroller.refresh();
   else chartW.update("none");
@@ -625,7 +630,7 @@ function renderWeightChart(rows) {
 
 function renderSensorsPage(v, historyRows = []) {
   renderLinkSplit(v);
-  $("w").textContent = `${Number(v.weight_g).toFixed(1)} g`;
+  $("w").textContent = Number.isFinite(Number(v.weight_g)) ? `${Math.round(Number(v.weight_g))} g` : "– g";
   $("d").textContent = v.dist_cm < 0 ? "no echo" : `${Math.round(v.dist_cm)} cm`;
   $("dDesc").textContent =
     v.dist_cm > 0 && v.dist_cm < 100 ? "User detected at desk (< 100 cm)" : "No user detected at desk";
