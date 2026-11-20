@@ -144,6 +144,15 @@ static inline int lineSuggestMl(float mlLastHour, float roomT, float base = 100)
   return (int)(roundf(s / 10.0f) * 10.0f);
 }
 
+// นาที → ข้อความอ่านง่าย: "45 นาที", "2 ชม. 5 นาที", "มากกว่า 1 วัน" (กันตัวเลขอย่าง 2600 นาที)
+static inline const char *lnMins(float m, char *buf, size_t n) {
+  if (!isfinite(m) || m < 0) m = 0;
+  if (m >= 24 * 60)  snprintf(buf, n, "มากกว่า 1 วัน");
+  else if (m >= 120) snprintf(buf, n, "%d ชม. %d นาที", (int)m / 60, (int)m % 60);
+  else               snprintf(buf, n, "%.0f นาที", m);
+  return buf;
+}
+
 // ข้อความหนึ่งบรรทัดต่อท้าย: ถ้าใส่ไม่ครบจะข้ามทั้งบรรทัด (ไม่ตัดกลางตัวอักษรไทย 3 ไบต์/อีโมจิ 4 ไบต์ → LINE ไม่ reject)
 #define LN_APPEND(...) do { int k_ = snprintf(out + len, n - len, __VA_ARGS__); \
   if (k_ < 0 || (size_t)k_ >= n - len) out[len] = 0; else len += k_; } while (0)
@@ -155,19 +164,20 @@ static inline void lineBuildText(char *out, size_t n, LineLevel lv, const LineNo
   int pct = isnan(in.p) ? -1 : (int)lroundf(in.p * 100.0f);
   size_t len = 0;
   out[0] = 0;
+  char mt[40]; lnMins(in.minsSinceDrink, mt, sizeof(mt));
   if (lv == LN_URGENT) {
-    LN_APPEND("⚠️ ยังไม่ได้ดื่มน้ำมานาน %.0f นาทีแล้ว\n"
+    LN_APPEND("⚠️ ยังไม่ได้ดื่มน้ำมานาน %s แล้ว\n"
               "วันนี้ดื่มไป %.0f ml · ลองดื่มสัก ~%d ml ตอนนี้เลย",
-              in.minsSinceDrink, in.mlToday, sug);
+              mt, in.mlToday, sug);
   } else if (repeatNo > 0) {
-    LN_APPEND("💧 เตือนอีกครั้ง ยังไม่ได้ดื่มมา %.0f นาที\n"
+    LN_APPEND("💧 เตือนอีกครั้ง ยังไม่ได้ดื่มมา %s\n"
               "ลองดื่มสัก ~%d ml นะ (วันนี้ %.0f ml)",
-              in.minsSinceDrink, sug, in.mlToday);
+              mt, sug, in.mlToday);
   } else {
     LN_APPEND("💧 ถึงเวลาดื่มน้ำแล้ว\n"
-              "ไม่ได้ดื่มน้ำมา %.0f นาที · ชั่วโมงที่ผ่านมา %.0f ml · วันนี้ %.0f ml\n"
+              "ไม่ได้ดื่มน้ำมา %s · ชั่วโมงที่ผ่านมา %.0f ml · วันนี้ %.0f ml\n"
               "ลองดื่มน้ำสัก ~%d ml นะ",
-              in.minsSinceDrink, in.mlLastHour, in.mlToday, sug);
+              mt, in.mlLastHour, in.mlToday, sug);
   }
   if (!isnan(in.roomT) && in.roomT >= 29.0f) LN_APPEND("\n อุณหภูมิห้องสูง %.0f°C ควรดื่มน้ำเพิ่ม", in.roomT);
   if (pct >= 0)                              LN_APPEND("\n AI ประเมินเสี่ยงดื่มน้ำน้อย %d%%", pct);
@@ -180,7 +190,8 @@ static inline void lineBuildRaiseText(char *out, size_t n, const LineRaiseInput 
   size_t len = 0;
   out[0] = 0;
   if (in.overdue) {
-    LN_APPEND("🚩 ยกธงแล้ว: ไม่ได้ดื่มน้ำมา %.0f นาที (เกิน %.0f นาที)", in.minsSinceDrink, in.overdueMin);
+    char mt[40]; lnMins(in.minsSinceDrink, mt, sizeof(mt));
+    LN_APPEND("🚩 ยกธงแล้ว: ไม่ได้ดื่มน้ำมา %s (เกิน %.0f นาที)", mt, in.overdueMin);
     if (pct >= 0) LN_APPEND("\nAI ประเมินเสี่ยงดื่มน้ำน้อย %d%%", pct);
     return;
   }
@@ -204,7 +215,7 @@ static inline void lineBuildRaiseText(char *out, size_t n, const LineRaiseInput 
     const char *sep = wl ? ", " : "";
     int r = -1;
     switch (top[k]) {
-      case 0: r = snprintf(why + wl, sizeof(why) - wl, "%sไม่ได้ดื่มมา %.0f นาที", sep, v); break;
+      case 0: { char mt[40]; r = snprintf(why + wl, sizeof(why) - wl, "%sไม่ได้ดื่มมา %s", sep, lnMins(v, mt, sizeof(mt))); } break;
       case 1: r = snprintf(why + wl, sizeof(why) - wl, "%sชม.ที่ผ่านมาดื่มแค่ %.0f ml", sep, v); break;
       case 2: r = snprintf(why + wl, sizeof(why) - wl, "%sวันนี้ดื่มแค่ %.0f ml", sep, v); break;
       case 3: r = snprintf(why + wl, sizeof(why) - wl, "%sห้องร้อน %.0f°C", sep, v); break;

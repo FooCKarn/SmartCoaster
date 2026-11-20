@@ -151,6 +151,28 @@ struct Lock {
 
 // นาทีที่ผ่านไป (คูณ DEMO_SPEED แล้ว)
 float minsSince(uint32_t ms) { return (millis() - ms) / 60000.0f * DEMO_SPEED; }
+// นาทีที่ไม่ได้ดื่ม สำหรับแสดงผล / ส่งขึ้น cloud / LINE: ตัดไว้ไม่เกิน 1 วัน กันตัวเลขหลุดโลก (เช่น 2,600 นาที)
+const float MINS_DISPLAY_CAP = 24 * 60;
+float minsSinceDrinkCapped(uint32_t lastDrinkMs) { return min(minsSince(lastDrinkMs), MINS_DISPLAY_CAP); }
+
+// ===== guard rail ค่าเซนเซอร์ =====
+// ค่าที่เป็นไปไม่ได้ทางกายภาพ = ทิ้ง (NaN / ใช้ค่าเดิม) ไม่ส่งเข้า drink detector / AI
+const float W_MIN_G = -100, W_MAX_G = 3000;      // load cell: แก้ว+น้ำไม่เกิน 3 kg, ติดลบเกิน -100 g = จุดศูนย์เพี้ยน
+const float DIST_MIN_CM = 2, DIST_MAX_CM = 400;  // HC-SR04 วัดได้จริง
+const float T_MIN = 0, T_MAX = 50, RH_MIN = 5, RH_MAX = 95;   // ช่วงที่ DHT11 วัดได้
+const float T_JUMP = 5, RH_JUMP = 20;            // เปลี่ยนเกินนี้ใน 5 วิ = ค่ากระตุก ต้องเห็นซ้ำ 3 ครั้งถึงเชื่อ
+const float ML_TODAY_MAX = 10000;                // ดื่มเกิน 10 ลิตร/วัน = ผิดแน่
+uint32_t badWeightCount = 0;
+
+float guardWeight(float w) { return (isfinite(w) && w >= W_MIN_G && w <= W_MAX_G) ? w : NAN; }
+float guardDist(float d)   { return (isfinite(d) && d >= DIST_MIN_CM && d <= DIST_MAX_CM) ? d : -1; }
+// รับค่าใหม่ถ้าอยู่ในช่วง และไม่กระโดดจากค่าเดิมเกิน jump (ถ้ากระโดดแต่เห็นซ้ำ 3 ครั้ง = เปลี่ยนจริง ยอมรับ)
+float guardSlow(float v, float cur, float lo, float hi, float jump, int &strikes) {
+  if (!isfinite(v) || v < lo || v > hi) return cur;
+  if (isnan(cur) || fabsf(v - cur) <= jump) { strikes = 0; return v; }
+  if (++strikes >= 3) { strikes = 0; return v; }
+  return cur;
+}
 float nowMin() { return millis() / 60000.0f * DEMO_SPEED; }       // "นาทีในระบบ" ให้ LineNotifier
 uint32_t scaledMinToMs(float m) { return (uint32_t)(m * 60000.0f / DEMO_SPEED); }
 
@@ -323,7 +345,11 @@ void saveDrinkStateLocked() {
 
 void restoreDrinkStateLocked(const struct tm &now) {
   uint64_t last = prefs.getULong64("lastDrink", 0);
-  if (last && epochMs() > last && epochMs() - last < 7ULL * 86400000ULL) {
+  if (DEMO_SPEED != 1) {
+    // โหมดเร่งเวลา: อายุจริงจาก flash จะถูกคูณ DEMO_SPEED (ดื่มเมื่อ 43 นาทีก่อน → 2,580 "นาที") ไม่คืนค่า เริ่มนับใหม่
+    S.lastDrinkMs = millis();
+    Serial.println("[DRINK] DEMO_SPEED != 1: ไม่คืนเวลาดื่มล่าสุดจาก flash เริ่มนับใหม่");
+  } else if (last && epochMs() > last && epochMs() - last < 7ULL * 86400000ULL) {
     // ลบแบบ unsigned: millis() - อายุ จะวนค่า แต่ minsSince() ลบกลับได้อายุจริง
     S.lastDrinkMs = millis() - (uint32_t)(epochMs() - last);
     Serial.printf("[DRINK] คืนค่าจาก flash: ดื่มล่าสุด %.0f นาทีที่แล้ว\n", (epochMs() - last) / 60000.0);
@@ -342,7 +368,7 @@ void handleDrinkLocked(const NodeMsg &m, DrinkEvent ev, float amount) {
     S.histHead = (S.histHead + 1) % 32;
     if (S.histCount < 32) S.histCount++;
     S.lastDrinkMs = millis();
-    S.mlToday += amount;
+    S.mlToday = min(S.mlToday + amount, ML_TODAY_MAX);
     S.holdUntilMs = millis() + scaledMinToMs(HOLD_DOWN_MIN);
     setSignLocked(false, "ดื่มแล้ว");
     saveDrinkStateLocked();
@@ -390,11 +416,15 @@ void nodeTask(void *) {
       Lock l;
       S.rxCount++;
       if (m.queued == 0 && m.age_ms < 2000) {        // ข้อมูลค้างคิวเป็นค่าเก่า ไม่ใช้บอกว่าตอนนี้มีคนไหม
-        S.lastDistCm = m.dist_cm;
+        S.lastDistCm = guardDist(m.dist_cm);
         S.lastNodeMs = millis();
       }
       refBefore = S.drink.refWeight();
-      ev = S.drink.update(m.weight_g, &amount);
+      float wIn = guardWeight(m.weight_g);
+      if (isnan(wIn) && !isnan(m.weight_g) && (++badWeightCount % 12) == 1)
+        Serial.printf("[GUARD] น้ำหนัก %.0f g ผิดช่วง (%.0f..%.0f) ไม่นับ — ถ้าติดลบตลอด ยกแก้วออกแล้วรีสตาร์ต node\n",
+                      m.weight_g, W_MIN_G, W_MAX_G);
+      ev = S.drink.update(wIn, &amount);
       if (ev != EV_NONE) handleDrinkLocked(m, ev, amount);
       if (isnan(refBefore) && !isnan(S.drink.refWeight()))
         Serial.printf("[DRINK] จำน้ำหนักแก้วแรก %.0f g (ดื่มแล้ววางกลับ ลดลง ≥ 15 g จะนับ)\n", S.drink.refWeight());
@@ -413,7 +443,7 @@ void nodeTask(void *) {
       rec["motion_count"] = (uint32_t)motionCount;
       rec["cup"]       = S.drink.cupPresent();
       rec["ml_today"]  = S.mlToday;
-      rec["mins_since_drink"] = minsSince(S.lastDrinkMs);
+      rec["mins_since_drink"] = minsSinceDrinkCapped(S.lastDrinkMs);
       if (!isnan(S.aiP)) {
         rec["ai_p"] = S.aiP;
         JsonArray x = rec["ai_x"].to<JsonArray>();     // feature ที่ AI ใช้ เก็บไว้เทรนใหม่ (ai/train.py)
@@ -466,14 +496,17 @@ void sensorTask(void *) {
   TickType_t wake = xTaskGetTickCount();
   for (;;) {
     float t = dht.readTemperature(), h = dht.readHumidity();
-    int snd = readSound();
+    // เสียง: อ่าน 3 ครั้งเอาค่ากลาง (median) ตัดเสียงกระแทกครั้งเดียว
+    int a = readSound(), b = readSound(), c = readSound();
+    int snd = max(min(a, b), min(max(a, b), c));
+    static int tStrikes = 0, hStrikes = 0;
     struct tm now;
     bool haveTime = getLocalTime(&now, 0);
     {
       Lock l;
-      if (!isnan(t)) S.roomT = t;
-      if (!isnan(h)) S.roomRH = h;
-      S.soundP2P = snd;
+      S.roomT  = guardSlow(t, S.roomT,  T_MIN,  T_MAX,  T_JUMP,  tStrikes);
+      S.roomRH = guardSlow(h, S.roomRH, RH_MIN, RH_MAX, RH_JUMP, hStrikes);
+      S.soundP2P = constrain(snd, 0, 4095);
       if (haveTime && S.todayYday == -1) {               // เพิ่งได้เวลาหลังบูต → คืนค่าที่จำไว้
         S.todayYday = now.tm_yday;
         restoreDrinkStateLocked(now);
@@ -589,7 +622,7 @@ void runAIOnce(bool print) {
     // ป้ายยกค้างนานแล้วยังไม่ดื่ม → LINE  ระดับ (สุภาพ/ด่วน) และข้อความขึ้นกับ p ของ AI (ดู line_notify.h)
     LineNotifyInput ni;
     ni.signUp = S.signUp;  ni.quiet = S.quiet;  ni.p = S.aiP;
-    ni.minsSinceDrink = minsSince(S.lastDrinkMs);
+    ni.minsSinceDrink = minsSinceDrinkCapped(S.lastDrinkMs);
     ni.minsSignUp = S.signUp ? minsSince(S.signUpSinceMs) : 0;
     ni.mlLastHour = S.aiX[1];  ni.mlToday = S.mlToday;  ni.roomT = S.roomT;
     ni.dayId = S.todayYday;
