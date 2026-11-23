@@ -15,3 +15,7 @@
 
 // ---- E5: ตรวจ certificate ----
 #define USE_ROOT_CA 1    // 1 = ตรวจ cert ด้วย gateway/root_ca.h, 0 = setInsecure() (แก้ปัญหาเท่านั้น)
+
+// ---- E6: OTA อัปเดต firmware ผ่าน WiFi (ดู docs/ota-e6.md) ----
+// Arduino IDE จะถามรหัสนี้ตอนอัปโหลดผ่าน network port  ว่าง/ไม่มีบรรทัดนี้ = ปิด OTA
+#define OTA_PASSWORD "change-me"

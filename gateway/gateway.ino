@@ -1,4 +1,4 @@
-// gateway/gateway.ino — FreeRTOS (E1) + ACK/offline queue (E4) + TLS root CA / Firebase Auth (E5)
+// gateway/gateway.ino — FreeRTOS (E1) + ACK/offline queue (E4) + TLS root CA / Firebase Auth (E5) + OTA (E6)
 //
 //  ESP-NOW callback ──rxQueue──▶ nodeTask ──uploadQueue──▶ netTask ──HTTPS──▶ Firebase
 //        ▲  ACK ◀──────────────────┘   │ ตรวจการดื่ม                   │ เน็ตล่ม → flash (LittleFS)
@@ -35,6 +35,7 @@
 #include "drink_detect.h"
 #include "ai_model.h"
 #include "line_notify.h"   // ตัดสินใจเวลา/ระดับ/ข้อความ LINE ตามค่า AI
+#include "ota.h"           // E6: อัปเดต firmware ผ่าน WiFi (otaTask)
 
 // Arduino IDE สร้าง prototype ของฟังก์ชันไว้บนสุดของไฟล์อัตโนมัติ
 // ต้องประกาศชื่อ struct ไว้ก่อน ไม่งั้น linkStatFor() จะ error ว่า LinkStat does not name a type
@@ -208,6 +209,7 @@ void servoTask(void *) {
   for (;;) {
     int deg;
     if (xQueueReceive(servoQueue, &deg, pdMS_TO_TICKS(20)) == pdTRUE) target = deg;
+    if (otaActive) { ledcWrite(SERVO_PIN, 0); moving = false; continue; }   // E6: กำลังอัป firmware
     if (estop) {
       if (!stopped) { ledcWrite(SERVO_PIN, 0); stopped = true; moving = false; Serial.println("[ESTOP] หยุดเซอร์โวแล้ว (พิมพ์ c เพื่อปลด)"); }
       continue;
@@ -236,6 +238,7 @@ void servoTask(void *) {
   for (;;) {
     int deg;
     if (xQueueReceive(servoQueue, &deg, pdMS_TO_TICKS(50)) == pdTRUE) target = deg;
+    if (otaActive) { ledcWrite(SERVO_PIN, 0); continue; }   // E6: กำลังอัป firmware
     if (estop) {
       if (!stopped) { ledcWrite(SERVO_PIN, 0); stopped = true; Serial.println("[ESTOP] หยุดเซอร์โวแล้ว (พิมพ์ c เพื่อปลด)"); }
       continue;
@@ -678,6 +681,7 @@ void netTask(void *) {
   storeBegin();
   uint32_t lastWifiTry = 0;
   for (;;) {
+    if (otaActive) { vTaskDelay(pdMS_TO_TICKS(200)); continue; }   // E6: พัก HTTPS ระหว่างอัป firmware
     bool online = WiFi.status() == WL_CONNECTED;
     if (!online && millis() - lastWifiTry > 10000) {      // Robustness: ต่อใหม่ทุก 10 วิ
       lastWifiTry = millis();
@@ -814,6 +818,7 @@ void setup() {
   xTaskCreate(sensorTask, "sensor", 3072,  nullptr, 2, nullptr);
   xTaskCreate(aiTask,     "ai",     6144,  nullptr, 2, nullptr);
   xTaskCreate(netTask,    "net",    12288, nullptr, 1, nullptr);   // HTTPS/TLS ใช้ stack เยอะ
+  xTaskCreate(otaTask,    "ota",    8192,  nullptr, 1, nullptr);   // E6: ArduinoOTA.handle()
 
   Serial.printf("Gateway ready  (AI model: %s, DEMO_SPEED=%d, VIDEO_MODE=%d)\n", AI_TRAINED_ON, DEMO_SPEED, VIDEO_MODE);
   Serial.println("Serial: a=ดูค่า AI  w=AI อธิบายว่าทำไมยก/ไม่ยก  s=สถานะ  u/n=ยก/ลดป้าย  c=ปลด e-stop  m=ส่ง LINE ทดสอบ  l=สถานะ LINE  q=โควตา LINE");
