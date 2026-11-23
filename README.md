@@ -92,6 +92,8 @@ PlatformIO ดาวน์โหลด framework และไลบรารี�
 
 ทดสอบการส่ง LINE จาก gateway: [docs/line_setup.md](docs/line_setup.md)
 
+อัปเดต firmware gateway ผ่าน WiFi (OTA, E6): [docs/ota-e6.md](docs/ota-e6.md)
+
 ### 3. Gateway
 1. คัดลอก `gateway/secrets.example.h` เป็น `gateway/secrets.h` แล้วใส่ Wi-Fi (2.4 GHz), URL ของ Firebase RTDB และ LINE credentials
 2. อัปโหลด `gateway/gateway.ino` จด `WiFi channel = X` ที่พิมพ์ออกมา
